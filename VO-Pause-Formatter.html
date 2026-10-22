@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VO Pause Formatter</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Familjen+Grotesk:wght@500;600&family=Fragment+Mono&display=swap">
+<style>
+/* Layout: a studio console. Engine cards on top, rhythm strip as the readout, script and output side by side. */
+:root{
+  --font-display:'Familjen Grotesk','DM Sans',system-ui,sans-serif;
+  --font-body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'Fragment Mono',ui-monospace,Menlo,Consolas,monospace;
+  --bg:#EDF0F3; --panel:#FFFFFF; --sunken:#F5F7F9; --line:#DAE0E6; --line-strong:#C3CCD5;
+  --fg:#14202B; --muted:#5B6874; --speech:#0B7A75; --speech-ink:#FFFFFF; --pause:#D97706; --pause-wash:#FBEBD3; --danger:#B42318;
+  --tag-bg:#FBEBD3; --tag-ink:#8A4B05; --shadow:0 1px 2px rgba(20,32,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1217; --panel:#141B22; --sunken:#1A232C; --line:#25303A; --line-strong:#364452;
+    --fg:#E5ECF2; --muted:#8C9DAC; --speech:#34D1C5; --speech-ink:#06211F; --pause:#F5A524; --pause-wash:#3A2A10; --danger:#FF8A80;
+    --tag-bg:#3A2A10; --tag-ink:#F8C877; --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1217; --panel:#141B22; --sunken:#1A232C; --line:#25303A; --line-strong:#364452;
+  --fg:#E5ECF2; --muted:#8C9DAC; --speech:#34D1C5; --speech-ink:#06211F; --pause:#F5A524; --pause-wash:#3A2A10; --danger:#FF8A80;
+  --tag-bg:#3A2A10; --tag-ink:#F8C877; --shadow:none; color-scheme:dark;
+}
+html,body{min-height:100%}
+body{
+  box-sizing:border-box;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.5;
+  padding-block:20px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-font-smoothing:antialiased;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:2px solid var(--speech);outline-offset:2px}
+
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.hd h1{font-family:var(--font-display);font-weight:600;font-size:26px;line-height:1.15;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.hd p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.icon-btn{width:32px;height:32px;display:inline-grid;place-items:center;border-radius:8px;color:var(--muted);border:1px solid var(--line-strong);background:var(--panel);flex:none}
+.icon-btn:hover{color:var(--fg)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.engines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.eng{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);min-width:0}
+.eng b{font-family:var(--font-display);font-weight:600;font-size:16px}
+.eng span{color:var(--muted);font-size:12.5px}
+.eng:hover{border-color:var(--line-strong)}
+.eng[aria-checked="true"]{border-color:var(--speech);box-shadow:inset 0 0 0 1px var(--speech);background:var(--sunken)}
+.eng[aria-checked="true"] b{color:var(--speech)}
+
+.ctrl{padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f>label,.f>.lab{font-size:11.5px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{padding:6px 14px;color:var(--muted);font-weight:500}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--panel)}
+.inp,.sel{height:34px;padding:0 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);min-width:0}
+.inp.mono{font-family:var(--font-mono);font-size:12.5px}
+.checks{display:flex;flex-wrap:wrap;gap:8px 18px;padding:0 14px 12px}
+.chk{display:flex;gap:8px;align-items:flex-start;max-width:340px}
+.chk input{margin:3px 0 0;accent-color:var(--speech);flex:none}
+.chk small{display:block;color:var(--muted);font-size:12px}
+details.tune{padding:0 14px 12px}
+details.tune summary{cursor:pointer;color:var(--muted);font-weight:500;padding:2px 0}
+.tunegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px}
+.tunegrid .inp{width:100%;font-family:var(--font-mono);font-size:12.5px}
+
+.strip-card{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.strip-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.strip-h h2{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.strip{display:flex;align-items:center;gap:1px;height:38px;width:100%;overflow:hidden;border-radius:6px;background:var(--sunken)}
+.strip i{display:block;min-width:1px}
+.strip .sp{height:46%;background:var(--speech);border-radius:2px;opacity:.9}
+.strip .gp{background:var(--pause)}
+.strip .g-c{height:30%;opacity:.7}.strip .g-s{height:66%}.strip .g-m{height:84%}.strip .g-p{height:100%}
+.strip-empty{color:var(--muted);font-size:13px;min-height:38px;display:flex;align-items:center}
+.stats{display:flex;flex-wrap:wrap;gap:6px 26px;margin:0}
+.stats div{display:flex;flex-direction:column}
+.stats dt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stats dd{margin:0;font-family:var(--font-mono);font-size:15px}
+
+.panes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.pane{display:flex;flex-direction:column;min-width:0}
+.pane-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);min-height:50px}
+.pane-h h2{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0}
+.pane-h small{color:var(--muted);margin-left:8px;font-weight:400;font-family:var(--font-body);font-size:12px}
+.acts{display:flex;gap:6px}
+.btn{height:30px;padding:0 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.btn:hover{background:var(--sunken)}
+.btn.primary{background:var(--speech);border-color:var(--speech);color:var(--speech-ink)}
+.btn.primary:hover{background:var(--speech);filter:brightness(1.06)}
+textarea.src{width:100%;min-height:340px;flex:1;resize:vertical;border:0;padding:14px;background:transparent;font-family:var(--font-mono);font-size:13px;line-height:1.7;outline:none}
+.out{margin:0;padding:14px;min-height:340px;flex:1;white-space:pre-wrap;word-break:break-word;overflow:auto;font-family:var(--font-mono);font-size:13px;line-height:1.7;user-select:text}
+.out .tag{background:var(--tag-bg);color:var(--tag-ink);border-radius:4px;padding:1px 3px}
+.out .add{background:var(--tag-bg);color:var(--tag-ink);border-radius:3px;padding:0 3px;font-weight:600;box-shadow:inset 0 -2px 0 var(--pause)}
+.out.empty{color:var(--muted);font-family:var(--font-body);font-size:14px}
+.help{padding:8px 14px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+.help code{font-family:var(--font-mono);font-size:12px;background:var(--sunken);padding:1px 5px;border-radius:4px}
+.note{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.note p{margin:0;max-width:92ch}
+.note .runs{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
+.note .runs b{color:var(--pause);font-family:var(--font-mono);font-weight:400}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-weight:500;z-index:20}
+
+details.tune .rules{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px}
+details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:70ch}
+.seg{max-width:100%}
+.inp:disabled,.sel:disabled{opacity:.5}
+.chk input:disabled+span{opacity:.5}
+@media (max-width:520px){ .seg button{padding:6px 5px;font-size:13px} }
+@media (max-width:860px){
+  .panes{grid-template-columns:minmax(0,1fr)}
+  .engines{grid-template-columns:minmax(0,1fr)}
+  textarea.src,.out{min-height:240px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hd">
+    <div>
+      <h1>VO Pause Formatter</h1>
+      <p>Paste a voice-over script, pick the engine that will read it, and copy back text with even, natural pauses.</p>
+    </div>
+    <button class="icon-btn" id="theme" aria-label="Toggle dark mode"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
+  </header>
+
+  <div class="engines" role="radiogroup" aria-label="Voice engine">
+    <button class="eng" role="radio" data-engine="azure" aria-checked="true"><b>Azure</b><span>SSML with break tags</span></button>
+    <button class="eng" role="radio" data-engine="eleven" aria-checked="false"><b>ElevenLabs</b><span>Break tags, or punctuation for v3 and v4</span></button>
+    <button class="eng" role="radio" data-engine="storyline" aria-checked="false"><b>Storyline AI voice</b><span>Plain text only, no markup</span></button>
+  </div>
+
+  <section class="card" aria-label="Pause settings">
+    <div class="ctrl">
+      <div class="f" id="fModel" hidden>
+        <label for="elModel">ElevenLabs model</label>
+        <select class="sel" id="elModel">
+          <option value="tags">Multilingual v2 or Flash (break tags)</option>
+          <option value="plain">Eleven v3 or v4 (punctuation only)</option>
+        </select>
+      </div>
+      <div class="f" id="fProfile">
+        <span class="lab" id="profLab">Pause style</span>
+        <div class="seg" role="group" aria-labelledby="profLab">
+          <button data-profile="minimal" aria-pressed="false">Minimal</button>
+          <button data-profile="light" aria-pressed="false">Light</button>
+          <button data-profile="natural" aria-pressed="true">Natural</button>
+          <button data-profile="relaxed" aria-pressed="false">Relaxed</button>
+          <button data-profile="expressive" aria-pressed="false">Expressive</button>
+        </div>
+      </div>
+      <div class="f" id="fDash" hidden>
+        <label for="dashStyle">Dash style</label>
+        <select class="sel" id="dashStyle">
+          <option value="em">Em dash —</option>
+          <option value="hyphen">Spaced hyphen -</option>
+          <option value="ellipsis">Ellipsis …</option>
+        </select>
+      </div>
+      <div class="f" id="fGap" hidden>
+        <label for="gap">Gap after each sentence</label>
+        <select class="sel" id="gap">
+          <option value="space">Same line</option>
+          <option value="line">New line</option>
+          <option value="blank">Blank line</option>
+        </select>
+      </div>
+      <div class="f" id="fVoice">
+        <label for="voice">Azure voice name</label>
+        <input class="inp mono" id="voice" type="text" spellcheck="false" autocomplete="off" style="width:230px">
+      </div>
+      <div class="f" id="fWrap">
+        <span class="lab">Output</span>
+        <label class="chk" style="align-items:center;height:34px"><input type="checkbox" id="wrap"> Wrap in speak and voice</label>
+      </div>
+      <div class="f">
+        <label for="wpm">Speaking rate (words per min)</label>
+        <input class="inp mono" id="wpm" type="number" min="80" max="260" step="5" style="width:110px">
+      </div>
+    </div>
+    <div class="checks">
+      <label class="chk" id="cInner"><input type="checkbox" id="optInner"><span>Short pauses inside sentences<small id="innerHint">Commas, colons, semicolons and dashes.</small></span></label>
+      <label class="chk" id="cLead"><input type="checkbox" id="optLead"><span>Skip commas after one-word lead-ins<small>Keeps "So," and "Next," at the start of a sentence from getting a pause.</small></span></label>
+      <label class="chk"><input type="checkbox" id="optLines"><span>My line breaks end a sentence<small>Adds a full stop where a line has none.</small></span></label>
+      <label class="chk" id="cOne"><input type="checkbox" id="optOne"><span>One sentence per line in the output<small>Easier to read and check.</small></span></label>
+      <label class="chk" id="cAdd" hidden><input type="checkbox" id="optAdd"><span>Add commas, dashes and full stops<small>Every addition is highlighted so you can check it.</small></span></label>
+      <label class="chk" id="cSplit" hidden><input type="checkbox" id="optSplit"><span>Split very long sentences<small>Adds a full stop where a new clause begins.</small></span></label>
+      <label class="chk" id="cDash" hidden><input type="checkbox" id="optDash"><span>Use dashes for the longest pauses<small>A dash gives a firmer pause than a comma.</small></span></label>
+    </div>
+    <details class="tune" id="tune">
+      <summary>Fine-tune pause lengths (milliseconds)</summary>
+      <div class="tunegrid" id="tuneGrid"></div>
+    </details>
+    <details class="tune" id="punct" open hidden>
+      <summary>Punctuation rules and thresholds</summary>
+      <div class="rules" id="ruleList"></div>
+      <div class="tunegrid" id="numGrid"></div>
+      <p class="hint">Thresholds count the words in a clause before the conjunction. 99 switches that rule off. Changing any value here sets the strength to custom.</p>
+      <div class="f" style="margin-top:10px;max-width:280px">
+        <label for="markerStyle">[pause] marker becomes</label>
+        <select class="sel" id="markerStyle">
+          <option value="auto">Auto, by length</option>
+          <option value="dash">Always a dash</option>
+          <option value="ellipsis">Always an ellipsis</option>
+        </select>
+      </div>
+    </details>
+  </section>
+
+  <section class="card strip-card" aria-label="Rhythm preview">
+    <div class="strip-h">
+      <h2>Rhythm</h2>
+      <div class="legend" id="legend"><span><i style="background:var(--speech)"></i>Speech</span><span><i style="background:var(--pause);opacity:.7"></i>Short pause</span><span><i style="background:var(--pause)"></i>Sentence or marker</span></div>
+    </div>
+    <div id="strip" class="strip" role="img" aria-label="Speech and pause rhythm"></div>
+    <dl class="stats" id="stats"></dl>
+  </section>
+
+  <div class="panes">
+    <section class="card pane" aria-label="Script input">
+      <div class="pane-h">
+        <h2>Script<small id="sampleTag"></small></h2>
+        <div class="acts"><button class="btn" id="sample">Load sample</button><button class="btn" id="clear">Clear</button></div>
+      </div>
+      <textarea class="src" id="src" spellcheck="true" placeholder="Paste your voice-over script here. Blank lines start a new paragraph." aria-label="Voice-over script"></textarea>
+      <div class="help">Write <code>[pause]</code>, <code>[short pause]</code>, <code>[long pause]</code> or <code>[pause 1.2s]</code> anywhere to force a pause. Plain-text engines turn it into punctuation or a paragraph break.</div>
+    </section>
+    <section class="card pane" aria-label="Formatted output">
+      <div class="pane-h">
+        <h2>Output<small id="outTag"></small></h2>
+        <div class="acts"><button class="btn primary" id="copy">Copy output</button></div>
+      </div>
+      <pre class="out" id="out" tabindex="0" aria-live="polite"></pre>
+    </section>
+  </div>
+
+  <section class="card note" id="notes" aria-label="Engine notes"></section>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+/* ===== Core: pure text conversion, no DOM ===== */
+(function(root){
+  var T0='', T1='', P0='', P1='';
+  var TOK=/([cspm])(\d+)/g;
+  var RANK={c:0,s:1,m:2,p:3};
+  var MIN_MS=50, LONG=22;
+  var PRESETS={
+    minimal: {comma:80, semi:140,dash:100,sentence:250,question:300,ellipsis:350,paragraph:500, beat:300},
+    light:   {comma:120,semi:200,dash:150,sentence:350,question:400,ellipsis:450,paragraph:700, beat:400},
+    natural: {comma:200,semi:300,dash:250,sentence:500,question:550,ellipsis:600,paragraph:900, beat:600},
+    relaxed: {comma:300,semi:450,dash:350,sentence:700,question:750,ellipsis:800,paragraph:1200,beat:800},
+    expressive:{comma:400,semi:550,dash:450,sentence:900,question:950,ellipsis:1000,paragraph:1500,beat:1000}
+  };
+  var MARK=/[ \t]*\[\s*(short|long)?\s*(?:pause|beat)\s*(?:(\d+(?:\.\d+)?)\s*(ms|s|sec|secs|seconds?)?)?\s*\][ \t]*/gi;
+  var SCAN=/(\.{2,}|…|[.!?]+)(["”’')\]]*)(?=\s|$|)|([,;:])(["”’')\]]*)(?=\s|$|)|(\s[—–-]{1,2})(?=\s)|([—–])(?=\S)/g;
+  /* Inserted punctuation is wrapped in   so the page can highlight it; the copied text has them stripped. */
+  function MK(c){ return ''+c+''; }
+  function makeSet(s){ var o=Object.create(null); s.split(' ').forEach(function(w){ o[w]=1; }); return o; }
+  function makeMap(obj){ var o=Object.create(null); Object.keys(obj).forEach(function(k){ o[k]=obj[k]; }); return o; }
+  var PRON = makeSet("you you'll you've you're you'd we we'll we've we're we'd i i'll i've i'm i'd they they'll they've they're they'd it it'll it's he she there");
+  var LEAD1 = makeSet('so now next then finally lastly also additionally however therefore meanwhile instead otherwise thus furthermore moreover afterwards overall usually typically generally sometimes often first second third okay ok');
+  var LEAD_BLOCK = makeSet('steps step aid unit module section slide page topic lesson button screen time day year quarter line half thing things of to in and that many much far long few than week month level question questions');
+  var PHRASES = [['for','example'],['for','instance'],['in','addition'],['in','fact'],['of','course'],['as','a','result'],['by','the','way'],['first','of','all'],['on','the','other','hand'],['in','other','words'],['to','begin','with'],['to','start','with'],['at','this','point'],['in','summary'],['in','conclusion']];
+  var SUB = makeSet('if when while as once although though because since before after unless until whenever whether');
+  var PREP = makeSet('in at by on during throughout within for with without from through across under over upon');
+  var COMPL = makeSet('sure that know see understand ensure think how what whether if say said hope believe check confirm notice learn realize remember find show when because so and but or then to');
+  var PAIR = makeSet('between both either neither');
+  /* a word after "and" or "or" that starts a noun phrase, so the conjunction joins nouns and no comma is wanted */
+  var DET = makeSet('the a an its their your our his her my this that these those some any each every all both other more most many much few several various key new how what why where who whose which when');
+  var SPLIT = makeSet('which because while whereas where although though unless until whenever who whose so');
+  /* Punctuation rules per strength. xTh = words a clause needs before that conjunction gets a comma (99 = never). */
+  var RULES = {
+    minimal:   {lead:true,intro:false,conj:false,sub:false,long:true,andTh:99,butTh:99,soTh:99,orTh:99,longN:28,sentN:60,minWords:5},
+    light:     {lead:true,intro:true, conj:true, sub:false,long:true,andTh:99,butTh:6, soTh:99,orTh:99,longN:24,sentN:42,minWords:4},
+    natural:   {lead:true,intro:true, conj:true, sub:true, long:true,andTh:8, butTh:4, soTh:6, orTh:9, longN:16,sentN:30,minWords:4},
+    relaxed:   {lead:true,intro:true, conj:true, sub:true, long:true,andTh:6, butTh:4, soTh:5, orTh:7, longN:12,sentN:24,minWords:4},
+    expressive:{lead:true,intro:true, conj:true, sub:true, long:true,andTh:5, butTh:3, soTh:4, orTh:5, longN:10,sentN:20,minWords:3}
+  };
+  var SUBMID = makeSet('which whereas although though');
+  function strip(w){ return w.replace(/[]/g,''); }
+  function bare(w){ return strip(w).replace(/^[“‘"'(\[]+/,'').replace(/[.,;:!?…”’"')\]—–-]+$/,'').toLowerCase().replace(/’/g,"'"); }
+  function hasP(w){ var x=strip(w); return /[,;:.!?…]["”’')\]]*$/.test(x) || /^[—–-]+$/.test(x); }
+
+  /* Rule-based punctuation for plain-text engines. One sentence in, one or two sentences out. */
+  function enhanceSeg(seg,L,cfg,stats){
+    var R=L.r, m=/^(\s*)([\s\S]*?)(\s*)$/.exec(seg), body=m[2];
+    if(!body) return seg;
+    var words=body.split(' ');
+    if(words.length<(R.minWords>0 ? R.minWords : 4)) return seg;
+    var add=stats.added, i, j, k, lw, done=false;
+    function comma(idx){ words[idx]+=MK(','); add.comma++; }
+    function dashAt(idx){
+      if(cfg.dashStyle==='ellipsis') words[idx-1]+=MK('…');
+      else words.splice(idx,0,MK(cfg.dashStyle==='hyphen' ? '-' : '—'));
+      add.dash++;
+    }
+    function before(idx){ var n=0, q=idx-1; while(q>=0 && !hasP(words[q])){ n++; q--; } return n; }
+    function after(idx){ var n=0, q=idx; while(q<words.length){ n++; if(hasP(words[q])) break; q++; } return n; }
+
+    /* 1. commas after lead-in words and phrases */
+    lw = words.map(bare);
+    if(R.lead){
+      for(k=0;k<PHRASES.length && !done;k++){
+        var ph=PHRASES[k], n=ph.length, ok=words.length-n>=3;
+        for(j=0;j<n && ok;j++){ if(lw[j]!==ph[j]) ok=false; }
+        if(ok && !hasP(words[n-1])){ comma(n-1); done=true; }
+      }
+      if(!done && LEAD1[lw[0]] && !hasP(words[0]) && !LEAD_BLOCK[lw[1]]){ comma(0); done=true; }
+    }
+
+    /* 2. comma where an introductory clause or phrase ends and the main clause begins */
+    if(R.intro && (SUB[lw[0]] || PREP[lw[0]])){
+      var lo = 3;
+      if(SUB[lw[0]]){ var f=-1; for(j=1;j<=2;j++){ if(PRON[lw[j]]){ f=j; break; } } lo = f<0 ? -1 : f+2; }
+      if(lo>0){
+        var hi=Math.min(words.length-3, lo+11);
+        for(j=lo;j<=hi;j++){
+          if(PRON[lw[j]] && !COMPL[lw[j-1]]){
+            var clear=true; for(k=0;k<j;k++){ if(hasP(words[k])){ clear=false; break; } }
+            if(clear) comma(j-1);
+            break;
+          }
+        }
+      }
+    }
+
+    /* 3. comma before a conjunction that joins two substantial clauses */
+    if(R.conj){
+      lw = words.map(bare);
+      for(i=1;i<words.length-4;i++){
+        var th=L.conj[lw[i]];
+        if(th===undefined || th>=99 || hasP(words[i-1])) continue;
+        if(lw[i]==='so' && LEAD_BLOCK[lw[i+1]]) continue;
+        if((lw[i]==='and' || lw[i]==='or') && DET[lw[i+1]]) continue;
+        var pair=false; for(k=Math.max(0,i-6);k<i;k++){ if(PAIR[lw[k]]) pair=true; }
+        if(pair) continue;
+        if(before(i)>=th && after(i)>=4) comma(i-1);
+      }
+    }
+
+    /* 3b. comma before "which", "although", "whereas" and "though" when a longer thought comes before them */
+    if(R.sub){
+      lw = words.map(bare);
+      for(i=5;i<words.length-4;i++){
+        if(!SUBMID[lw[i]] || hasP(words[i-1])) continue;
+        var pw=lw[i-1];
+        if(PREP[pw] || pw==='all' || pw==='of' || pw==='even' || pw==='as' || pw==='and' || pw==='but') continue;
+        if(before(i)>=5 && after(i)>=4) comma(i-1);
+      }
+    }
+
+    /* 4. break up long stretches: a comma, or a dash for the longest */
+    for(var pass=0;R.long && pass<4;pass++){
+      lw = words.map(bare);
+      var cl=[], s0=0, changed=false;
+      for(i=0;i<words.length;i++){ if(hasP(words[i]) || i===words.length-1){ cl.push([s0,i]); s0=i+1; } }
+      for(k=0;k<cl.length && !changed;k++){
+        var cs=cl[k][0], ce=cl[k][1], cn=ce-cs+1;
+        if(cn<=L.long) continue;
+        var mid=(cs+ce)/2, best=-1, bd=1e9, tier;
+        for(tier=0;tier<2 && best<0;tier++){
+          for(j=cs+4;j<=ce-3;j++){
+            var cw=lw[j], okc = tier===0 ? SPLIT[cw] : ((cw==='and' || cw==='or') ? !DET[lw[j+1]] : cw==='but');
+            if(okc && !hasP(words[j-1]) && Math.abs(j-mid)<bd){ bd=Math.abs(j-mid); best=j; }
+          }
+        }
+        if(best>0){
+          if(cfg.useDash && cn>L.long+8) dashAt(best);
+          else comma(best-1);
+          changed=true;
+        }
+      }
+      if(!changed) break;
+    }
+
+    /* 5. split a very long sentence with a full stop at a conjunction that already follows a comma */
+    if(cfg.splitLong && words.length>L.sent){
+      lw = words.map(bare);
+      var mid2=words.length/2, bj=-1, bd2=1e9;
+      for(j=8;j<=words.length-9;j++){
+        if((lw[j]==='and' || lw[j]==='but' || lw[j]==='so') && (PRON[lw[j+1]] || PRON[lw[j+2]]) && /,["”’')\]]*$/.test(strip(words[j-1])) && Math.abs(j-mid2)<bd2){ bd2=Math.abs(j-mid2); bj=j; }
+      }
+      if(bj>0){
+        var raw=words[bj-1];
+        if(raw.indexOf(MK(','))>=0){ raw=raw.replace(MK(','),''); add.comma--; }
+        else raw=raw.replace(/,(["”’')\]]*)$/,'$1');
+        words[bj-1]=raw+MK('.');
+        add.stop++; stats.sentences++;
+        var capd=words[bj].charAt(0).toUpperCase()+words[bj].slice(1);
+        return m[1]+words.slice(0,bj).join(' ')+tok('s',0)+capd+' '+words.slice(bj+1).join(' ')+m[3];
+      }
+    }
+    return m[1]+words.join(' ')+m[3];
+  }
+  function enhanceCore(core,cfg,stats){
+    var R=Object.assign({},RULES.natural,cfg.rules || RULES[cfg.level] || {});
+    var L={r:R,long:R.longN,sent:R.sentN,conj:makeMap({and:R.andTh,but:R.butTh,so:R.soTh,or:R.orTh})};
+    var parts=core.split(TOK), res='', i;
+    for(i=0;i<parts.length;i+=3){
+      res += enhanceSeg(parts[i],L,cfg,stats);
+      if(parts[i+1]!==undefined) res += tok(parts[i+1],+parts[i+2]);
+    }
+    return res;
+  }
+
+  function tok(type,ms){ return T0+type+Math.max(0,Math.round(ms))+T1; }
+  function escXml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function countWords(s){
+    var parts = s.replace(TOK,' ').split(/\s+/), n = 0;
+    for(var i=0;i<parts.length;i++){ if(/[\p{L}\p{N}]/u.test(parts[i])) n++; }
+    return n;
+  }
+  function excerpt(chunk){
+    var w = chunk.replace(TOK,' ').replace(/\d+/g,'…').trim().split(/\s+/);
+    return w.length>12 ? w.slice(0,8).join(' ')+' … '+w.slice(-3).join(' ') : w.join(' ');
+  }
+
+  function protect(text){
+    var store = [];
+    function stash(m){ store.push(m); return P0+(store.length-1)+P1; }
+    text = text.replace(/\b(?:https?:\/\/|www\.)[^\s]+|[\w.+-]+@[\w-]+\.[\w.-]+/g, stash);
+    text = text.replace(/\b(?:e\.g|i\.e)\.(?=,|\s|$)/gi, stash);
+    text = text.replace(/\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|Fig|approx|Inc|Ltd)\.(?=\s)/g, stash);
+    text = text.replace(/\betc\.(?=\s+[a-z,;])/g, stash);
+    text = text.replace(/\b(?:[A-Za-z]\.){2,}(?=\s|,|$)/g, stash);
+    text = text.replace(/\d+(?:[.,:]\d+)+/g, stash);
+    return {text:text, store:store};
+  }
+  function restore(text,store,esc){
+    return text.replace(/(\d+)/g,function(m,i){ var v=store[+i]; return esc?escXml(v):v; });
+  }
+  function endsPunct(line,store){
+    if(/[.!?…:;,—–-]["”’')\]]*$/.test(line)) return true;
+    if(/$/.test(line)) return true;
+    var m = /(\d+)$/.exec(line);
+    return !!(m && /\.$/.test(store[+m[1]]));
+  }
+
+  function processPara(par,ctx){
+    var vals=ctx.vals, stats=ctx.stats;
+    var lines = par.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+    if(ctx.lineBreaks){
+      lines = lines.map(function(l){ if(endsPunct(l,ctx.store)) return l; stats.added.stop++; return l+MK('.'); });
+    }
+    var s = lines.join(' '), last = 0, atStart = true;
+    var out = s.replace(SCAN,function(m,g1,g2,g3,g4,g5,g6,offset,whole){
+      var chunk = whole.slice(last,offset), w = countWords(chunk);
+      last = offset+m.length;
+      if(w>LONG) stats.longRuns.push({words:w,excerpt:excerpt(chunk)});
+      var type='c', ms=0, add=false, rest, next;
+      if(g1){
+        rest = whole.slice(offset+m.length).replace(/^\s+/,'');
+        next = rest.charAt(0);
+        var ell = /^(\.{2,}|…)$/.test(g1);
+        var lower = next && /[a-zà-ÿ]/.test(next);
+        if(lower){
+          if(ctx.inner){ type='c'; ms = ell ? vals.ellipsis : vals.comma; add=true; }
+        }else{
+          type='s'; ms = ell ? vals.ellipsis : (/[?!]/.test(g1) ? vals.question : vals.sentence); add=true; stats.sentences++;
+        }
+      }else if(g3){
+        if(ctx.inner){
+          if(g3===','){
+            if(!(ctx.skipLead && w<=1 && atStart)){ ms=vals.comma; add=true; }
+          }else{ ms=vals.semi; add=true; }
+        }
+      }else if(g5 || g6){
+        if(ctx.inner){ ms=vals.dash; add=true; }
+      }
+      atStart = (type==='s' && add);
+      return add ? m+tok(type,ms) : m;
+    });
+    var tail = s.slice(last), tw = countWords(tail);
+    if(tw>LONG) stats.longRuns.push({words:tw,excerpt:excerpt(tail)});
+    if(tw>0) stats.sentences++;
+    return out+tok('p',vals.paragraph);
+  }
+
+  function mkTag(mode,ms){
+    if(mode==='azure') return '<break time="'+ms+'ms"/>';
+    return '<break time="'+parseFloat((ms/1000).toFixed(2))+'s" />';
+  }
+
+  function convert(input,cfg){
+    var stats={words:0,sentences:0,paragraphs:0,breaks:0,pauseMs:0,clamped:0,longRuns:[],segments:[],durationSec:0,added:{comma:0,dash:0,stop:0,space:0}};
+    var src = String(input||'').replace(/\r\n?/g,'\n').replace(/ /g,' ');
+    src = src.replace(/<\/?(?:speak|voice|break|prosody|p|s|mark|emphasis|say-as)\b[^>]*>/gi,' ');
+    if(!/\S/.test(src)) return {text:'',marked:'',core:'',stats:stats};
+    var mode=cfg.mode, vals=cfg.vals;
+    src = src.replace(MARK,function(m,kind,num,unit){
+      var ms, k = kind ? kind.toLowerCase() : '';
+      if(num){
+        var n=parseFloat(num);
+        ms = /^ms$/i.test(unit||'') ? n : (unit ? n*1000 : (n>=20 ? n : n*1000));
+      }else if(k==='short') ms=vals.beat*0.5;
+      else if(k==='long') ms=vals.beat*2;
+      else ms=vals.beat;
+      return tok('m',ms);
+    });
+    var pr = protect(src), t = pr.text;
+    t = t.replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+    t = t.replace(/ +([,;:.!?])/g,'$1').replace(/([,;:])(?=[A-Za-z])/g,'$1 ');
+    /* run-on sentences from pasted text, such as "course.It" */
+    t = t.replace(/([a-z0-9®™)’'"]{2}[.!?])(?=[A-Z])/g,function(m){ stats.added.space++; return m+' '; });
+    if(mode!=='plain' || !cfg.dashStyle || cfg.dashStyle==='em') t = t.replace(/ -{1,2} /g,' — ');
+    else if(cfg.dashStyle==='hyphen') t = t.replace(/ [—–-]{1,2} /g,' - ');
+    var paras = t.split(/\n{2,}/).filter(function(p){ return /\S/.test(p); });
+    stats.paragraphs = paras.length;
+    var ctx={vals:vals,inner:!!cfg.inner && mode!=='plain',skipLead:!!cfg.skipLead,lineBreaks:!!cfg.lineBreaks,store:pr.store,stats:stats};
+    var core = paras.map(function(p){ return processPara(p,ctx); }).join('');
+    core = core.replace(/(?:[cspm]\d+[ \t\n]*){2,}/g,function(run){
+      var max=0, type='c';
+      run.replace(TOK,function(m,tp,ms){ ms=+ms; if(ms>max) max=ms; if(RANK[tp]>RANK[type]) type=tp; return m; });
+      return tok(type,max);
+    });
+    core = core.replace(/[ \t\n]*[cspm]\d+[ \t\n]*$/,'').replace(/^[ \t\n]+/,'');
+    var maxMs = mode==='eleven' ? 3000 : 20000;
+    core = core.replace(TOK,function(m,tp,ms){
+      if(+ms>maxMs){ stats.clamped++; return tok(tp,maxMs); }
+      return m;
+    });
+
+    if(mode==='plain' && cfg.addPunct) core = enhanceCore(core,cfg,stats);
+
+    var parts = core.split(TOK), i;
+    for(i=0;i<parts.length;i+=3){
+      var words = countWords(parts[i]);
+      var type2 = parts[i+1], ms2 = parts[i+2]!==undefined ? +parts[i+2] : 0;
+      stats.words += words;
+      stats.segments.push({words:words,type:type2||'p',ms:ms2});
+      if(type2 && mode!=='plain' && ms2>=MIN_MS){ stats.breaks++; stats.pauseMs += ms2; }
+    }
+    var wpm = cfg.wpm>0 ? cfg.wpm : 150;
+    stats.durationSec = stats.words/wpm*60 + (mode==='plain' ? 0 : stats.pauseMs/1000);
+
+    var out;
+    if(mode==='plain'){
+      var gap = cfg.gap==='space' ? ' ' : (cfg.gap==='blank' ? '\n\n' : '\n');
+      out = core.replace(/([cspm])(\d+)[ \t]*/g,function(m,tp,ms,off,whole){
+        ms=+ms;
+        if(tp==='p') return '\n\n';
+        if(tp==='s') return gap;
+        if(tp==='c') return ' ';
+        var pre = whole.slice(Math.max(0,off-4),off).replace(/[]/g,'');
+        var prev = pre.slice(-1), prev2 = pre.slice(-2,-1);
+        var endP = /[.!?…]/.test(prev) || (/["”’')\]]/.test(prev) && /[.!?…]/.test(prev2));
+        var dashS = cfg.dashStyle==='hyphen' ? ' - ' : (cfg.dashStyle==='ellipsis' ? '… ' : ' — ');
+        if(ms>=1000) return '\n\n';
+        if(endP) return ms>=500 ? '\n' : ' ';
+        if(cfg.markerStyle==='dash') return dashS;
+        if(cfg.markerStyle==='ellipsis') return '… ';
+        return ms>=500 ? dashS : ', ';
+      });
+      out = restore(out,pr.store,false).replace(/[ \t]{2,}/g,' ').replace(/[ \t]+\n/g,'\n').trim();
+    }else{
+      var esc = mode==='azure';
+      var body = esc ? escXml(core) : core;
+      out = body.replace(/([cspm])(\d+)[ \t]*/g,function(m,tp,ms){
+        ms=+ms;
+        var tag = ms>=MIN_MS ? mkTag(mode,ms) : '';
+        var sep = ' ';
+        if(tp==='p') sep='\n\n'; else if(tp==='s' && cfg.oneLine) sep='\n';
+        return tag+sep;
+      });
+      out = restore(out,pr.store,esc).replace(/[ \t]+\n/g,'\n').trim();
+      if(mode==='azure' && cfg.wrap){
+        var voice = (cfg.voice||'').trim() || 'en-US-JennyNeural';
+        var lang = voice.split('-').slice(0,2).join('-');
+        if(!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(lang)) lang='en-US';
+        var ind = out.split('\n').map(function(l){ return l ? '    '+l : l; }).join('\n');
+        out = '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="'+lang+'">\n  <voice name="'+escXml(voice).replace(/"/g,'&quot;')+'">\n'+ind+'\n  </voice>\n</speak>';
+      }
+    }
+    return {text:out.replace(/[]/g,''),marked:out,core:core,stats:stats};
+  }
+  root.VOCore = {convert:convert, PRESETS:PRESETS, RULES:RULES, MIN_MS:MIN_MS};
+})(typeof window!=='undefined' ? window : globalThis);
+</script>
+
+<script>
+/* ===== Page wiring ===== */
+(function(){
+  var C = window.VOCore;
+  var $ = function(s){ return document.querySelector(s); };
+  var KEY = 'vo-pause-formatter.v1';
+  var SAMPLE =
+"Welcome to Fire Safety Essentials. In this short module you will learn how to spot hazards, use an extinguisher, and leave the building safely.\n\n"+
+"Before we begin, take a moment to find your nearest exit. [pause] Notice where the alarm points are, and where the assembly area is, because in an emergency there is no time to look.\n\n"+
+"Every employee must check the electrical panels in each building and record any fault they find in the shared log before the end of their shift. If you notice smoke or a burning smell you should press the nearest alarm and then leave the area at once. The extinguisher holds about 9.5 litres which is enough for roughly 12 seconds although most people empty it far sooner than they expect. Dr. Rao, our safety officer, puts it simply: stay calm, stay low, and keep moving. Ready? Let's get started.";
+  var RULE_KEYS = [['lead','Commas after lead-ins','For example, So, Next, However,'],['intro','Comma after an opening clause','If you are ready, press start.'],['conj','Comma before and, but, so, or','Only between two long clauses. See the thresholds.'],['sub','Comma before which, although, whereas','Sets off an added thought.'],['long','Break up long unpunctuated stretches','A comma or dash near the middle.']];
+  var NUMS = [['andTh','Comma before “and” after'],['butTh','Comma before “but” after'],['soTh','Comma before “so” after'],['orTh','Comma before “or” after'],['longN','Break a stretch over'],['sentN','Split a sentence over'],['minWords','Skip sentences under']];
+  var PMIN = {longN:4,sentN:8};
+  function pmin(k){ return PMIN[k] || 1; }
+  var PROFILES = ['minimal','light','natural','relaxed','expressive','custom'];
+  var VALS = [['comma','Comma'],['semi','Semicolon, colon'],['dash','Dash'],['sentence','Full stop'],['question','? and !'],['ellipsis','Ellipsis'],['paragraph','Paragraph'],['beat','[pause] marker']];
+  var NOTES = {
+    azure:'Each break is added on top of the voice’s own pause at a punctuation mark, so Natural is already a light touch. Azure accepts breaks up to 20 seconds. Paste the full output into the SSML box, or untick the wrapper to paste only the text.',
+    elevenTags:'Break tags work on Multilingual v2 and the Flash models, up to 3 seconds each. ElevenLabs warns that many breaks can speed speech up or add noise, so pauses inside sentences start switched off here.',
+    elevenPlain:'Eleven v3 and v4 do not read break tags, so pauses have to come from punctuation. This adds commas, dashes and full stops by rule and highlights each one. A dash is the most dependable way to ask for a short pause. The rules do not understand the sentence, so check the highlighted marks before you use them.',
+    storyline:'Storyline’s built-in AI voices take plain text, so pauses have to come from punctuation. This adds commas, dashes and full stops by rule and highlights each one so you can keep or fix it. The rules do not understand the sentence, so check the highlighted marks. Pause markers become a comma, a dash or a paragraph break depending on length. Test one slide first.'
+  };
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  var DEFAULTS = {engine:'storyline',elModel:'tags',profile:'natural',vals:clone(C.PRESETS.natural),inner:true,skipLead:true,lineBreaks:true,oneLine:false,gap:'line',addPunct:true,splitLong:true,useDash:true,pr:clone(C.RULES.natural),dashStyle:'em',markerStyle:'auto',voice:'en-US-JennyNeural',wrap:true,wpm:150,touchedInner:false};
+  var state = clone(DEFAULTS), text = SAMPLE, raw = '';
+
+  try{
+    var saved = JSON.parse(localStorage.getItem(KEY)||'null');
+    if(saved && saved.state){
+      Object.keys(DEFAULTS).forEach(function(k){ if(saved.state[k]!==undefined && typeof saved.state[k]===typeof DEFAULTS[k]) state[k]=saved.state[k]; });
+      if(saved.state.vals){ VALS.forEach(function(v){ var n=+saved.state.vals[v[0]]; if(isFinite(n)) state.vals[v[0]]=Math.min(5000,Math.max(0,n)); }); }
+    }
+    if(saved && saved.state){
+      var base = clone(C.RULES[state.profile] || C.RULES.natural), sp = saved.state.pr;
+      if(sp && typeof sp==='object'){ Object.keys(base).forEach(function(k){ var v=sp[k]; if(typeof v===typeof base[k] && (typeof v!=='number' || isFinite(v))) base[k] = typeof v==='number' ? Math.min(99,Math.max(pmin(k),Math.round(v))) : v; }); }
+      state.pr = base;
+    }
+    if(saved && typeof saved.text==='string' && saved.text.trim()) text = saved.text;
+  }catch(e){}
+  if(['azure','eleven','storyline'].indexOf(state.engine)<0) state.engine='azure';
+  if(['tags','plain'].indexOf(state.elModel)<0) state.elModel='tags';
+  if(['space','line','blank'].indexOf(state.gap)<0) state.gap='line';
+  if(['em','hyphen','ellipsis'].indexOf(state.dashStyle)<0) state.dashStyle='em';
+  if(['auto','dash','ellipsis'].indexOf(state.markerStyle)<0) state.markerStyle='auto';
+  if(PROFILES.indexOf(state.profile)<0) state.profile='natural';
+
+  var saveTimer=null;
+  function save(){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(function(){ try{ localStorage.setItem(KEY,JSON.stringify({state:state,text:text})); }catch(e){} },300);
+  }
+  function mode(){ return state.engine==='azure' ? 'azure' : (state.engine==='eleven' && state.elModel==='tags' ? 'eleven' : 'plain'); }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function mmss(sec){ sec=Math.round(sec); return Math.floor(sec/60)+':'+(sec%60<10?'0':'')+(sec%60); }
+  function autoInner(){ if(!state.touchedInner) state.inner = mode()!=='eleven'; }
+
+  /* ----- controls ----- */
+  var tuneGrid = $('#tuneGrid');
+  tuneGrid.innerHTML = VALS.map(function(v){ return '<div class="f"><label for="v-'+v[0]+'">'+v[1]+'</label><input class="inp" type="number" id="v-'+v[0]+'" data-val="'+v[0]+'" min="0" max="5000" step="50"></div>'; }).join('');
+
+  $('#ruleList').innerHTML = RULE_KEYS.map(function(r){ return '<label class="chk"><input type="checkbox" id="r-'+r[0]+'" data-rule="'+r[0]+'"><span>'+r[1]+'<small>'+r[2]+'</small></span></label>'; }).join('');
+  $('#numGrid').innerHTML = NUMS.map(function(n){ return '<div class="f"><label for="n-'+n[0]+'">'+n[1]+'</label><input class="inp" type="number" id="n-'+n[0]+'" data-pr="'+n[0]+'" min="'+pmin(n[0])+'" max="99" step="1"></div>'; }).join('');
+  function setCustom(){ state.profile='custom'; document.querySelectorAll('[data-profile]').forEach(function(b){ b.setAttribute('aria-pressed','false'); }); }
+
+  function syncControls(){
+    var m = mode();
+    document.querySelectorAll('[data-engine]').forEach(function(b){ b.setAttribute('aria-checked', String(b.dataset.engine===state.engine)); });
+    document.querySelectorAll('[data-profile]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.profile===state.profile)); });
+    $('#elModel').value = state.elModel; $('#gap').value = state.gap; $('#voice').value = state.voice; $('#wrap').checked = state.wrap; $('#wpm').value = state.wpm;
+    $('#optInner').checked = state.inner; $('#optLead').checked = state.skipLead; $('#optLines').checked = state.lineBreaks; $('#optOne').checked = state.oneLine;
+    VALS.forEach(function(v){ $('#v-'+v[0]).value = state.vals[v[0]]; });
+    $('#fModel').hidden = state.engine!=='eleven';
+    $('#fProfile').hidden = false;
+    $('#profLab').textContent = m==='plain' ? 'Punctuation strength' : 'Pause style';
+    $('#cAdd').hidden = $('#cSplit').hidden = $('#cDash').hidden = m!=='plain';
+    $('#optAdd').checked = state.addPunct; $('#optSplit').checked = state.splitLong; $('#optDash').checked = state.useDash;
+    $('#fGap').hidden = m!=='plain'; $('#fDash').hidden = m!=='plain'; $('#punct').hidden = m!=='plain';
+    $('#dashStyle').value = state.dashStyle; $('#markerStyle').value = state.markerStyle;
+    RULE_KEYS.forEach(function(r){ var e=$('#r-'+r[0]); e.checked=!!state.pr[r[0]]; e.disabled=!state.addPunct; });
+    NUMS.forEach(function(n){ var e=$('#n-'+n[0]); e.value=state.pr[n[0]]; e.disabled=!state.addPunct; });
+    $('#fVoice').hidden = m!=='azure'; $('#fWrap').hidden = m!=='azure';
+    $('#cInner').hidden = m==='plain'; $('#cLead').hidden = m==='plain'; $('#cOne').hidden = m==='plain';
+    $('#tune').hidden = m==='plain';
+    $('#innerHint').textContent = m==='eleven' ? 'Commas, colons, semicolons and dashes. Fewer breaks is safer on ElevenLabs.' : 'Commas, colons, semicolons and dashes.';
+  }
+
+  /* ----- output ----- */
+  function highlight(marked){
+    var h = esc(marked).replace(/([\s\S]*?)/g,'<span class="add">$1</span>');
+    return h.replace(/(&lt;break [^&]*?\/&gt;)/g,'<span class="tag">$1</span>');
+  }
+
+  function drawStrip(r,m){
+    var strip=$('#strip'), wpm=state.wpm>0?state.wpm:150;
+    $('#legend').hidden = m==='plain';
+    if(m==='plain'){ strip.className='strip-empty'; strip.innerHTML='Plain text carries no timings, so there is no rhythm strip for this engine.'; strip.removeAttribute('role'); return; }
+    strip.className='strip'; strip.setAttribute('role','img');
+    if(!r.stats.segments.length){ strip.className='strip-empty'; strip.innerHTML='Paste a script to see where the pauses fall.'; return; }
+    var h='';
+    r.stats.segments.forEach(function(s){
+      if(s.words>0) h += '<i class="sp" style="flex:'+(s.words/wpm*60).toFixed(3)+' 1 0"></i>';
+      if(s.ms>=C.MIN_MS) h += '<i class="gp g-'+s.type+'" title="'+s.ms+' ms" style="flex:'+(s.ms/1000).toFixed(3)+' 1 0"></i>';
+    });
+    strip.innerHTML = h;
+  }
+
+  function update(){
+    var m = mode();
+    var cfg = {mode:m,vals:state.vals,inner:state.inner,skipLead:state.skipLead,lineBreaks:state.lineBreaks,oneLine:state.oneLine,gap:state.gap,voice:state.voice,wrap:state.wrap,wpm:state.wpm,
+               level:(C.RULES[state.profile] ? state.profile : 'natural'),rules:state.pr,dashStyle:state.dashStyle,markerStyle:state.markerStyle,addPunct:state.addPunct,splitLong:state.splitLong,useDash:state.useDash};
+    var r = C.convert(text,cfg);
+    raw = r.text;
+    var out = $('#out');
+    if(!raw){ out.className='out empty'; out.textContent='Your formatted script will appear here.'; }
+    else{ out.className='out'; out.innerHTML = highlight(r.marked); }
+    $('#outTag').textContent = m==='azure' ? 'SSML' : (m==='eleven' ? 'ElevenLabs tags' : (state.addPunct ? 'Plain text, additions highlighted' : 'Plain text'));
+    $('#sampleTag').textContent = text===SAMPLE ? 'Sample loaded. Paste your own to replace it.' : '';
+    drawStrip(r,m);
+    var s = r.stats, st;
+    if(m==='plain'){
+      st = [['Words',s.words],['Sentences',s.sentences],['Commas added',s.added.comma],['Dashes added',s.added.dash],['Full stops added',s.added.stop],['Spaces fixed',s.added.space]];
+    }else{
+      st = [['Words',s.words],['Sentences',s.sentences],['Breaks added',s.breaks],['Pause time',(s.pauseMs/1000).toFixed(1)+' s'],['Estimated length','~'+mmss(s.durationSec)]];
+    }
+    $('#stats').innerHTML = st.map(function(x){ return '<div><dt>'+x[0]+'</dt><dd>'+x[1]+'</dd></div>'; }).join('');
+    var key = m==='azure' ? 'azure' : (m==='eleven' ? 'elevenTags' : (state.engine==='eleven' ? 'elevenPlain' : 'storyline'));
+    var n = '<p>'+NOTES[key]+'</p>';
+    if(s.clamped) n += '<p><b>'+s.clamped+' pause'+(s.clamped>1?'s were':' was')+' shortened to the 3 second ElevenLabs limit.</b></p>';
+    if(s.longRuns.length){
+      n += '<p>Long stretches with no punctuation can sound rushed. Consider a comma or a split:</p><ul class="runs">'+
+        s.longRuns.slice(0,4).map(function(l){ return '<li><b>'+l.words+' words</b> '+esc(l.excerpt)+'</li>'; }).join('')+'</ul>';
+    }
+    $('#notes').innerHTML = n;
+  }
+  function refresh(){ syncControls(); update(); save(); }
+
+  /* ----- events ----- */
+  document.querySelectorAll('[data-engine]').forEach(function(b){
+    b.addEventListener('click',function(){ state.engine=b.dataset.engine; autoInner(); refresh(); });
+  });
+  $('#elModel').addEventListener('change',function(){ state.elModel=this.value; autoInner(); refresh(); });
+  document.querySelectorAll('[data-profile]').forEach(function(b){
+    b.addEventListener('click',function(){ state.profile=b.dataset.profile; state.vals=clone(C.PRESETS[state.profile]); state.pr=clone(C.RULES[state.profile]); refresh(); });
+  });
+  $('#dashStyle').addEventListener('change',function(){ state.dashStyle=this.value; update(); save(); });
+  $('#markerStyle').addEventListener('change',function(){ state.markerStyle=this.value; update(); save(); });
+  $('#ruleList').addEventListener('change',function(e){ var k=e.target.dataset && e.target.dataset.rule; if(!k) return; state.pr[k]=e.target.checked; setCustom(); update(); save(); });
+  $('#numGrid').addEventListener('input',function(e){
+    var k=e.target.dataset && e.target.dataset.pr; if(!k) return;
+    var n=Math.round(+e.target.value); if(!isFinite(n) || e.target.value==='') return;
+    state.pr[k]=Math.min(99,Math.max(pmin(k),n)); setCustom(); update(); save();
+  });
+  $('#gap').addEventListener('change',function(){ state.gap=this.value; refresh(); });
+  $('#voice').addEventListener('input',function(){ state.voice=this.value; update(); save(); });
+  $('#wrap').addEventListener('change',function(){ state.wrap=this.checked; update(); save(); });
+  $('#wpm').addEventListener('input',function(){ var n=+this.value; if(n>=40&&n<=400){ state.wpm=n; update(); save(); } });
+  $('#optInner').addEventListener('change',function(){ state.inner=this.checked; state.touchedInner=true; update(); save(); });
+  $('#optLead').addEventListener('change',function(){ state.skipLead=this.checked; update(); save(); });
+  $('#optLines').addEventListener('change',function(){ state.lineBreaks=this.checked; update(); save(); });
+  $('#optOne').addEventListener('change',function(){ state.oneLine=this.checked; update(); save(); });
+  $('#optAdd').addEventListener('change',function(){ state.addPunct=this.checked; refresh(); });
+  $('#optSplit').addEventListener('change',function(){ state.splitLong=this.checked; update(); save(); });
+  $('#optDash').addEventListener('change',function(){ state.useDash=this.checked; update(); save(); });
+  tuneGrid.addEventListener('input',function(e){
+    var k = e.target.dataset && e.target.dataset.val; if(!k) return;
+    var n=+e.target.value; if(!isFinite(n)) return;
+    state.vals[k]=Math.min(5000,Math.max(0,n)); state.profile='custom';
+    document.querySelectorAll('[data-profile]').forEach(function(b){ b.setAttribute('aria-pressed','false'); });
+    update(); save();
+  });
+  $('#src').addEventListener('input',function(){ text=this.value; update(); save(); });
+  $('#sample').addEventListener('click',function(){ text=SAMPLE; $('#src').value=text; update(); save(); });
+  $('#clear').addEventListener('click',function(){ text=''; $('#src').value=''; update(); save(); $('#src').focus(); });
+
+  var toastTimer=null;
+  function toast(msg){ var t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.hidden=true; },1800); }
+  $('#copy').addEventListener('click',function(){
+    if(!raw){ toast('Nothing to copy yet'); return; }
+    function fallback(){
+      var r=document.createRange(); r.selectNodeContents($('#out')); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      toast('Selected. Press Ctrl+C or ⌘C to copy');
+    }
+    try{ navigator.clipboard.writeText(raw).then(function(){ toast('Copied'); },fallback); }catch(e){ fallback(); }
+  });
+  $('#theme').addEventListener('click',function(){
+    var root=document.documentElement, ex=root.getAttribute('data-theme');
+    var dark = ex ? ex==='dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+  });
+
+  $('#src').value = text;
+  refresh();
+})();
+</script>
+</body>
+</html>
