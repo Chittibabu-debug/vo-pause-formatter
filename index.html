@@ -118,6 +118,11 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
 .inp:disabled,.sel:disabled{opacity:.5}
 .chk input:disabled+span{opacity:.5}
 @media (max-width:520px){ .seg button{padding:6px 5px;font-size:13px} }
+details.tune .hint{margin-bottom:0}
+.aibox{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
+.aistat{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13px;min-height:30px}
+.aibar{height:6px;background:var(--sunken);border-radius:3px;overflow:hidden;max-width:360px}
+.aibar i{display:block;height:100%;width:0;background:var(--speech)}
 @media (max-width:860px){
   .panes{grid-template-columns:minmax(0,1fr)}
   .engines{grid-template-columns:minmax(0,1fr)}
@@ -217,6 +222,11 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
         </select>
       </div>
     </details>
+    <div class="aibox" id="fAI" hidden>
+      <label class="chk"><input type="checkbox" id="optAI"><span>AI comma suggestions (optional)<small>A small model runs on your computer and suggests where commas belong, on top of the rules. Your script is never sent anywhere. The first use downloads about 560 MB, saved in this browser.</small></span></label>
+      <div class="aistat"><span id="aiStatus"></span><button class="btn" id="aiGo" hidden>Download model (560 MB)</button><button class="btn" id="aiRemove" hidden>Remove model from this browser</button></div>
+      <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
+    </div>
   </section>
 
   <section class="card strip-card" aria-label="Rhythm preview">
@@ -290,6 +300,10 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
     expressive:{lead:true,intro:true, conj:true, sub:true, long:true,andTh:5, butTh:3, soTh:4, orTh:5, longN:10,sentN:20,minWords:3}
   };
   var SUBMID = makeSet('which whereas although though');
+  /* trailing phrases that read better after a short pause, written as word lists */
+  var TRAIL = [['compared','to'],['compared','with'],['rather','than'],['instead','of'],['such','as'],['as','well','as'],['depending','on'],['based','on'],['according','to'],['including'],['especially'],['versus']];
+  /* prepositions that open a phrase and can take a comma when a clause runs long and has no conjunction */
+  var PREP2 = makeSet('across with for from during under between among through within without throughout against toward towards along');
   function strip(w){ return w.replace(/[]/g,''); }
   function bare(w){ return strip(w).replace(/^[“‘"'(\[]+/,'').replace(/[.,;:!?…”’"')\]—–-]+$/,'').toLowerCase().replace(/’/g,"'"); }
   function hasP(w){ var x=strip(w); return /[,;:.!?…]["”’')\]]*$/.test(x) || /^[—–-]+$/.test(x); }
@@ -360,6 +374,16 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
         if(PREP[pw] || pw==='all' || pw==='of' || pw==='even' || pw==='as' || pw==='and' || pw==='but') continue;
         if(before(i)>=5 && after(i)>=4) comma(i-1);
       }
+      for(i=5;i<words.length-2;i++){
+        if(hasP(words[i-1]) || PREP[lw[i-1]] || DET[lw[i-1]] || lw[i-1]==='of') continue;
+        var tr=false;
+        for(k=0;k<TRAIL.length && !tr;k++){
+          var tp=TRAIL[k], ok2=true;
+          for(j=0;j<tp.length && ok2;j++){ if(lw[i+j]!==tp[j]) ok2=false; }
+          tr=ok2;
+        }
+        if(tr && before(i)>=5 && after(i)>=3) comma(i-1);
+      }
     }
 
     /* 4. break up long stretches: a comma, or a dash for the longest */
@@ -371,14 +395,15 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
         var cs=cl[k][0], ce=cl[k][1], cn=ce-cs+1;
         if(cn<=L.long) continue;
         var mid=(cs+ce)/2, best=-1, bd=1e9, tier;
-        for(tier=0;tier<2 && best<0;tier++){
+        for(tier=0;tier<3 && best<0;tier++){
           for(j=cs+4;j<=ce-3;j++){
-            var cw=lw[j], okc = tier===0 ? SPLIT[cw] : ((cw==='and' || cw==='or') ? !DET[lw[j+1]] : cw==='but');
+            var cw=lw[j], okc = tier===0 ? SPLIT[cw] : (tier===1 ? ((cw==='and' || cw==='or') ? !DET[lw[j+1]] : cw==='but') : (PREP2[cw] && !DET[lw[j-1]] && !PREP[lw[j-1]] && lw[j-1]!=='of' && lw[j-1]!=='to' && ce-j>=3));
             if(okc && !hasP(words[j-1]) && Math.abs(j-mid)<bd){ bd=Math.abs(j-mid); best=j; }
           }
         }
         if(best>0){
-          if(cfg.useDash && cn>L.long+8) dashAt(best);
+          if(tier>=3) comma(best-1);
+          else if(cfg.useDash && cn>L.long+8) dashAt(best);
           else comma(best-1);
           changed=true;
         }
@@ -591,6 +616,89 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
 </script>
 
 <script>
+/* ===== Optional on-device AI comma suggestions (GitHub version only) ===== */
+(function(){
+  var MODEL='ldenoue/fullstop-punctuation-multilang-large';
+  var LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/+esm';
+  var A0='', A1='';
+  var AI = window.VOAI = {status:'off', pipe:null, cache:new Map(), busy:false, todo:[], error:'', progress:0, total:562, onchange:null};
+  function notify(){ if(typeof AI.onchange==='function') AI.onchange(); }
+  AI.words = function(s){ return s.split(/\s+/).filter(Boolean); };
+  function cleanWord(w){ return w.replace(/[®™]/g,'').replace(/^[“"‘(\[]+/,'').replace(/[,.;:!?…”"’')\]]+$/,''); }
+
+  /* Comma positions for one sentence: indexes of the words a comma should follow, or null if the model output did not line up. */
+  AI.predict = async function(sentence){
+    var words=AI.words(sentence), keep=[], clean=[];
+    words.forEach(function(w,i){ var c=cleanWord(w); if(/[\p{L}\p{N}]/u.test(c)){ keep.push(i); clean.push(c); } });
+    if(clean.length<6) return [];
+    var r = await AI.pipe(clean.join(' '));
+    var ends=[], total=0; clean.forEach(function(w){ total+=w.replace(/\s/g,'').length; ends.push(total); });
+    var pos=0, out=[];
+    r.forEach(function(t){
+      pos+=t.word.replace(/\s/g,'').length;
+      if(t.entity===','){ var wi=ends.indexOf(pos); if(wi>=0 && wi<clean.length-1) out.push(keep[wi]); }
+    });
+    return pos===total ? out : null;
+  };
+
+  async function run(){
+    AI.busy=true;
+    while(AI.todo.length){
+      var s=AI.todo.shift(), v=null;
+      try{ v=await AI.predict(s); }catch(e){ v=null; }
+      AI.cache.set(s,v);
+      if(!AI.todo.length || AI.todo.length%4===0) notify();
+    }
+    AI.busy=false; notify();
+  }
+
+  /* Insert suggested commas (wrapped so the page highlights them) into text that already has the author's punctuation. */
+  AI.apply = function(text){
+    var count=0, pending=[];
+    var out=text.split(/(\n+)/).map(function(part,i){
+      if(i%2) return part;
+      return part.split(/((?<=[.!?])\s+(?=[A-Z‘“"'(]))/).map(function(seg,j){
+        if(j%2) return seg;
+        var words=AI.words(seg);
+        if(words.length<6 || seg.indexOf('[')>=0) return seg;
+        var hit=AI.cache.get(seg);
+        if(hit===undefined){ pending.push(seg); return seg; }
+        if(!hit || !hit.length) return seg;
+        hit.forEach(function(wi){ if(!/[,.;:!?…]["”’')\]]*$/.test(words[wi])){ words[wi]+=A0+','+A1; count++; } });
+        return words.join(' ');
+      }).join('');
+    }).join('');
+    AI.todo=pending;
+    if(pending.length && AI.status==='ready' && !AI.busy) run();
+    return {text:out, count:count, pending:pending.length};
+  };
+
+  AI.hasCache = async function(){
+    try{ var c=await caches.open('transformers-cache'), ks=await c.keys(); return ks.some(function(k){ return /fullstop-punctuation/.test(k.url) && /model_quantized/.test(k.url); }); }
+    catch(e){ return false; }
+  };
+  AI.load = async function(){
+    if(AI.pipe){ AI.status='ready'; notify(); return; }
+    AI.status='loading'; AI.error=''; AI.progress=0; notify();
+    try{
+      var T=await import(LIB); T.env.allowLocalModels=false;
+      AI.pipe=await T.pipeline('token-classification',MODEL,{dtype:'q8',progress_callback:function(p){
+        if(p.file && /\.onnx$/.test(p.file) && p.status==='progress'){ AI.progress=Math.round(p.progress||0); AI.total=Math.round((p.total||0)/1e6)||AI.total; notify(); }
+      }});
+      AI.status='ready';
+    }catch(e){ AI.status='error'; AI.error=String(e && e.message || e); }
+    notify();
+  };
+  AI.remove = async function(){
+    try{ if(AI.pipe && AI.pipe.dispose) await AI.pipe.dispose(); }catch(e){}
+    AI.pipe=null; AI.cache.clear(); AI.todo=[];
+    try{ await caches.delete('transformers-cache'); }catch(e){}
+    AI.status='off'; notify();
+  };
+})();
+</script>
+
+<script>
 /* ===== Page wiring ===== */
 (function(){
   var C = window.VOCore;
@@ -613,7 +721,7 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
     storyline:'Storyline’s built-in AI voices take plain text, so pauses have to come from punctuation. This adds commas, dashes and full stops by rule and highlights each one so you can keep or fix it. The rules do not understand the sentence, so check the highlighted marks. Pause markers become a comma, a dash or a paragraph break depending on length. Test one slide first.'
   };
   function clone(o){ return JSON.parse(JSON.stringify(o)); }
-  var DEFAULTS = {engine:'storyline',elModel:'tags',profile:'natural',vals:clone(C.PRESETS.natural),inner:true,skipLead:true,lineBreaks:true,oneLine:false,gap:'line',addPunct:true,splitLong:true,useDash:true,pr:clone(C.RULES.natural),dashStyle:'em',markerStyle:'auto',voice:'en-US-JennyNeural',wrap:true,wpm:150,touchedInner:false};
+  var DEFAULTS = {engine:'storyline',elModel:'tags',profile:'natural',vals:clone(C.PRESETS.natural),inner:true,skipLead:true,lineBreaks:true,oneLine:false,gap:'line',addPunct:true,splitLong:true,useDash:true,ai:false,pr:clone(C.RULES.natural),dashStyle:'em',markerStyle:'auto',voice:'en-US-JennyNeural',wrap:true,wpm:150,touchedInner:false};
   var state = clone(DEFAULTS), text = SAMPLE, raw = '';
 
   try{
@@ -666,6 +774,7 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
     $('#profLab').textContent = m==='plain' ? 'Punctuation strength' : 'Pause style';
     $('#cAdd').hidden = $('#cSplit').hidden = $('#cDash').hidden = m!=='plain';
     $('#optAdd').checked = state.addPunct; $('#optSplit').checked = state.splitLong; $('#optDash').checked = state.useDash;
+    $('#fAI').hidden = m!=='plain'; $('#optAI').checked = state.ai;
     $('#fGap').hidden = m!=='plain'; $('#fDash').hidden = m!=='plain'; $('#punct').hidden = m!=='plain';
     $('#dashStyle').value = state.dashStyle; $('#markerStyle').value = state.markerStyle;
     RULE_KEYS.forEach(function(r){ var e=$('#r-'+r[0]); e.checked=!!state.pr[r[0]]; e.disabled=!state.addPunct; });
@@ -700,7 +809,9 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
     var m = mode();
     var cfg = {mode:m,vals:state.vals,inner:state.inner,skipLead:state.skipLead,lineBreaks:state.lineBreaks,oneLine:state.oneLine,gap:state.gap,voice:state.voice,wrap:state.wrap,wpm:state.wpm,
                level:(C.RULES[state.profile] ? state.profile : 'natural'),rules:state.pr,dashStyle:state.dashStyle,markerStyle:state.markerStyle,addPunct:state.addPunct,splitLong:state.splitLong,useDash:state.useDash};
-    var r = C.convert(text,cfg);
+    var aiInfo = null, srcText = text;
+    if(window.VOAI && state.ai && m==='plain'){ aiInfo = window.VOAI.apply(text); srcText = aiInfo.text; }
+    var r = C.convert(srcText,cfg);
     raw = r.text;
     var out = $('#out');
     if(!raw){ out.className='out empty'; out.textContent='Your formatted script will appear here.'; }
@@ -714,6 +825,7 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
     }else{
       st = [['Words',s.words],['Sentences',s.sentences],['Breaks added',s.breaks],['Pause time',(s.pauseMs/1000).toFixed(1)+' s'],['Estimated length','~'+mmss(s.durationSec)]];
     }
+    if(aiInfo) st.splice(2,0,['AI commas',aiInfo.count+(aiInfo.pending?' …':'')]);
     $('#stats').innerHTML = st.map(function(x){ return '<div><dt>'+x[0]+'</dt><dd>'+x[1]+'</dd></div>'; }).join('');
     var key = m==='azure' ? 'azure' : (m==='eleven' ? 'elevenTags' : (state.engine==='eleven' ? 'elevenPlain' : 'storyline'));
     var n = '<p>'+NOTES[key]+'</p>';
@@ -724,7 +836,27 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
     }
     $('#notes').innerHTML = n;
   }
-  function refresh(){ syncControls(); update(); save(); }
+  function renderAI(){
+    var A=window.VOAI, st=A.status, txt='', go=false, rm=false, bar=false;
+    if(state.ai || st==='loading' || st==='ready'){
+      if(st==='loading'){ txt='Downloading the model… '+A.progress+'% of about '+A.total+' MB. Keep this tab open.'; bar=true; }
+      else if(st==='ready'){ txt = state.ai ? (A.busy||A.todo.length ? 'Model ready. Checking sentences…' : 'Model ready. Running on this device.') : 'Model is loaded but switched off.'; rm=true; }
+      else if(st==='error'){ txt='Could not load the model: '+A.error+' Check your connection and try again.'; go=true; }
+      else if(state.ai){ txt='The model is not downloaded yet.'; go=true; }
+    }
+    $('#aiStatus').textContent=txt; $('#aiGo').hidden=!go; $('#aiRemove').hidden=!rm; $('#aiBar').hidden=!bar; $('#aiFill').style.width=A.progress+'%';
+  }
+  if(window.VOAI){
+    window.VOAI.onchange=function(){ renderAI(); update(); };
+    $('#optAI').addEventListener('change',function(){
+      state.ai=this.checked; save();
+      if(state.ai && window.VOAI.status==='off'){ window.VOAI.hasCache().then(function(has){ if(has) window.VOAI.load(); renderAI(); }); }
+      renderAI(); update();
+    });
+    $('#aiGo').addEventListener('click',function(){ window.VOAI.load(); });
+    $('#aiRemove').addEventListener('click',function(){ window.VOAI.remove().then(function(){ toast('Model removed from this browser'); }); });
+  }
+  function refresh(){ syncControls(); update(); save(); if(window.VOAI) renderAI(); }
 
   /* ----- events ----- */
   document.querySelectorAll('[data-engine]').forEach(function(b){
@@ -782,6 +914,7 @@ details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:
 
   $('#src').value = text;
   refresh();
+  if(window.VOAI && state.ai){ window.VOAI.hasCache().then(function(has){ if(has) window.VOAI.load(); else renderAI(); }); }
 })();
 </script>
 </body>
