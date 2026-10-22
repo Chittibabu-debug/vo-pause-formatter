@@ -4,259 +4,415 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>VO Pause Formatter</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Familjen+Grotesk:wght@500;600&family=Fragment+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=Fragment+Mono&display=swap">
 <style>
-/* Layout: a studio console. Engine cards on top, rhythm strip as the readout, script and output side by side. */
+/* Layout: engine choice on top, then settings on the left and script, output and rhythm on the right. */
 :root{
-  --font-display:'Familjen Grotesk','DM Sans',system-ui,sans-serif;
+  --font-display:'Plus Jakarta Sans','DM Sans',system-ui,sans-serif;
   --font-body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
   --font-mono:'Fragment Mono',ui-monospace,Menlo,Consolas,monospace;
-  --bg:#EDF0F3; --panel:#FFFFFF; --sunken:#F5F7F9; --line:#DAE0E6; --line-strong:#C3CCD5;
-  --fg:#14202B; --muted:#5B6874; --speech:#0B7A75; --speech-ink:#FFFFFF; --pause:#D97706; --pause-wash:#FBEBD3; --danger:#B42318;
-  --tag-bg:#FBEBD3; --tag-ink:#8A4B05; --shadow:0 1px 2px rgba(20,32,43,.06);
+  --bg:#F2F5FA; --panel:#FFFFFF; --sunken:#F5F7FB; --line:#E3E9F2; --line-strong:#CBD5E3;
+  --fg:#0F1B2D; --muted:#5E6C80; --speech:#0E8F82; --speech-ink:#FFFFFF; --speech-wash:#E3F5F2;
+  --pause:#E8820C; --danger:#C0392B; --danger-wash:#FDECEA;
+  --add-bg:#D3F3DF; --add-ink:#0A6A3A; --tag-bg:#FBEBD3; --tag-ink:#8A4B05;
+  --violet:#7357E6; --violet-wash:#F0ECFD; --coral:#EF4A5A;
+  --shadow:0 1px 2px rgba(15,27,45,.05),0 8px 24px rgba(30,50,90,.06);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0D1217; --panel:#141B22; --sunken:#1A232C; --line:#25303A; --line-strong:#364452;
-    --fg:#E5ECF2; --muted:#8C9DAC; --speech:#34D1C5; --speech-ink:#06211F; --pause:#F5A524; --pause-wash:#3A2A10; --danger:#FF8A80;
-    --tag-bg:#3A2A10; --tag-ink:#F8C877; --shadow:none; color-scheme:dark;
+    --bg:#0B1017; --panel:#131B25; --sunken:#18222E; --line:#243040; --line-strong:#344457;
+    --fg:#E7EEF6; --muted:#93A3B5; --speech:#2FCDBE; --speech-ink:#052421; --speech-wash:#12332F;
+    --pause:#F5A524; --danger:#FF8A80; --danger-wash:#3A1D1B;
+    --add-bg:#17432D; --add-ink:#8FE6B3; --tag-bg:#3A2A10; --tag-ink:#F8C877;
+    --violet:#A28BFF; --violet-wash:#241E40; --coral:#FF7A86; --shadow:none; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0D1217; --panel:#141B22; --sunken:#1A232C; --line:#25303A; --line-strong:#364452;
-  --fg:#E5ECF2; --muted:#8C9DAC; --speech:#34D1C5; --speech-ink:#06211F; --pause:#F5A524; --pause-wash:#3A2A10; --danger:#FF8A80;
-  --tag-bg:#3A2A10; --tag-ink:#F8C877; --shadow:none; color-scheme:dark;
+  --bg:#0B1017; --panel:#131B25; --sunken:#18222E; --line:#243040; --line-strong:#344457;
+  --fg:#E7EEF6; --muted:#93A3B5; --speech:#2FCDBE; --speech-ink:#052421; --speech-wash:#12332F;
+  --pause:#F5A524; --danger:#FF8A80; --danger-wash:#3A1D1B;
+  --add-bg:#17432D; --add-ink:#8FE6B3; --tag-bg:#3A2A10; --tag-ink:#F8C877;
+  --violet:#A28BFF; --violet-wash:#241E40; --coral:#FF7A86; --shadow:none; color-scheme:dark;
 }
 html,body{min-height:100%}
 body{
   box-sizing:border-box;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.5;
-  padding-block:20px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 36px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   -webkit-font-smoothing:antialiased;
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
-.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 button,input,select,textarea{font:inherit;color:inherit}
 button{background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
 :focus-visible{outline:2px solid var(--speech);outline-offset:2px}
+.ic{width:18px;height:18px;flex:none}
+h1,h2,h3{font-family:var(--font-display);margin:0}
 
-.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-.hd h1{font-family:var(--font-display);font-weight:600;font-size:26px;line-height:1.15;margin:0;letter-spacing:-.01em;text-wrap:balance}
-.hd p{margin:4px 0 0;color:var(--muted);max-width:60ch}
-.icon-btn{width:32px;height:32px;display:inline-grid;place-items:center;border-radius:8px;color:var(--muted);border:1px solid var(--line-strong);background:var(--panel);flex:none}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#12A596,#0A7A70);color:#fff;display:grid;place-items:center;flex:none;box-shadow:0 6px 16px rgba(14,143,130,.3)}
+.logo .ic{width:28px;height:28px;stroke-width:2.2}
+.hd h1{font-weight:800;font-size:28px;line-height:1.1;letter-spacing:-.02em;text-wrap:balance}
+.hd p{margin:4px 0 0;color:var(--muted)}
+.hd-r{display:flex;align-items:center;gap:12px;flex:none}
+.deco{display:flex;align-items:center;gap:0}
+.wavesvg{width:226px;height:60px}
+.mic{width:56px;height:56px;border-radius:50%;background:var(--coral);color:#fff;display:grid;place-items:center;margin-left:-22px;box-shadow:0 0 0 8px color-mix(in srgb,var(--coral) 16%,transparent),0 6px 16px color-mix(in srgb,var(--coral) 40%,transparent)}
+.mic .ic{width:24px;height:24px}
+.icon-btn{width:34px;height:34px;display:inline-grid;place-items:center;border-radius:10px;color:var(--muted);border:1px solid var(--line-strong);background:var(--panel);flex:none}
 .icon-btn:hover{color:var(--fg)}
+.help{padding:14px 18px}
+.help ol{margin:6px 0 0;padding-left:20px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
 
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
-.engines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.eng{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);min-width:0}
-.eng b{font-family:var(--font-display);font-weight:600;font-size:16px}
-.eng span{color:var(--muted);font-size:12.5px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.sec{padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+.sec-h{display:flex;gap:12px;align-items:flex-start}
+.num{width:30px;height:30px;border-radius:50%;background:var(--speech);color:var(--speech-ink);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;flex:none}
+.sec-h h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.sec-h p{margin:2px 0 0;color:var(--muted);font-size:13px;max-width:60ch}
+
+.engines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.eng{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;background:var(--panel);min-width:0;position:relative}
 .eng:hover{border-color:var(--line-strong)}
-.eng[aria-checked="true"]{border-color:var(--speech);box-shadow:inset 0 0 0 1px var(--speech);background:var(--sunken)}
-.eng[aria-checked="true"] b{color:var(--speech)}
+.eicon{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;flex:none}
+.eicon .ic{width:26px;height:26px;stroke-width:2}
+.e-azure{background:#E6F0FF;color:#2563EB}.e-eleven{background:#EEF0F4;color:#1B2433}.e-story{background:linear-gradient(135deg,#12A596,#0A7A70);color:#fff}
+.etxt{display:flex;flex-direction:column;min-width:0;padding-right:26px}
+.etxt b{font-family:var(--font-display);font-weight:700;font-size:16px}
+.etxt span{color:var(--muted);font-size:13px}
+.radio{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-strong);background:var(--panel)}
+.eng[aria-checked="true"]{border-color:var(--speech);background:var(--speech-wash);box-shadow:0 0 0 1px var(--speech)}
+.eng[aria-checked="true"] .radio{border-color:var(--speech);background:var(--speech);box-shadow:inset 0 0 0 5px var(--speech-wash)}
+:root[data-theme="dark"] .e-eleven{background:#222C3A;color:#E7EEF6}
 
-.ctrl{padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end}
-.f{display:flex;flex-direction:column;gap:5px;min-width:0}
-.f>label,.f>.lab{font-size:11.5px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
-.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--panel)}
-.seg button{padding:6px 14px;color:var(--muted);font-weight:500}
+.layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.side,.work{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:14px;background:var(--panel)}
+.panel h3{font-size:16px;font-weight:700}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f>label,.f>.lab,.lab{font-size:13px;font-weight:500;color:var(--fg);display:flex;align-items:center;gap:6px}
+.info{width:15px;height:15px;border-radius:50%;border:1.3px solid var(--muted);color:var(--muted);font-size:10px;font-weight:700;font-style:normal;display:inline-grid;place-items:center;cursor:help;line-height:1}
+.row-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--panel)}
+.seg button{padding:10px 4px;text-align:center;color:var(--fg);font-weight:500;font-size:13.5px}
 .seg button+button{border-left:1px solid var(--line-strong)}
-.seg button[aria-pressed="true"]{background:var(--fg);color:var(--panel)}
-.inp,.sel{height:34px;padding:0 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);min-width:0}
-.inp.mono{font-family:var(--font-mono);font-size:12.5px}
-.checks{display:flex;flex-wrap:wrap;gap:8px 18px;padding:0 14px 12px}
-.chk{display:flex;gap:8px;align-items:flex-start;max-width:340px}
-.chk input{margin:3px 0 0;accent-color:var(--speech);flex:none}
-.chk small{display:block;color:var(--muted);font-size:12px}
-details.tune{padding:0 14px 12px}
+.seg button:hover{background:var(--sunken)}
+.seg button[aria-pressed="true"]{background:var(--speech);color:var(--speech-ink);font-weight:600}
+.inp,.sel{height:38px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--panel);min-width:0;width:100%}
+.inp.mono{font-family:var(--font-mono);font-size:13px}
+.rate-row{display:flex;align-items:center;gap:16px}
+.rate-row .inp{width:76px;text-align:center;font-weight:600;flex:none}
+.slider{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.slider input[type=range]{width:100%;accent-color:var(--speech);margin:0}
+.slider .ticks{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.chk{display:flex;gap:10px;align-items:center}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:20px;height:20px;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--panel);flex:none;margin:0;cursor:pointer;display:inline-grid;place-items:center}
+input[type=checkbox]:checked{background:var(--speech) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3.2 3.2L15 6.8' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat;border-color:var(--speech)}
+input[type=checkbox]:disabled{opacity:.5;cursor:default}
+.rules{display:flex;flex-direction:column;gap:6px}
+.rules-gen{display:contents}
+.rule{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:var(--sunken);cursor:pointer}
+.rule .ri{color:var(--speech);width:20px;height:20px}
+.rule span{display:flex;flex-direction:column;min-width:0}
+.rule b{font-weight:600;font-size:13.5px}
+.rule small{color:var(--muted);font-size:12.5px}
+.rule:has(input:disabled){opacity:.55}
+.thr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 12px}
+.thr #numGrid{display:contents}
+.thr #fMarker{grid-column:span 2}
 details.tune summary{cursor:pointer;color:var(--muted);font-weight:500;padding:2px 0}
 .tunegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px}
-.tunegrid .inp{width:100%;font-family:var(--font-mono);font-size:12.5px}
+.tunegrid .inp{font-family:var(--font-mono);font-size:13px}
 
-.strip-card{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-.strip-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
-.strip-h h2{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0}
+.btn{height:34px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--panel);display:inline-flex;align-items:center;gap:7px;font-weight:500;white-space:nowrap;flex:none}
+.btn:hover{background:var(--sunken)}
+.btn .ic{width:16px;height:16px}
+.btn.primary{background:var(--speech);border-color:var(--speech);color:var(--speech-ink);font-weight:600}
+.btn.primary:hover{background:var(--speech);filter:brightness(1.07)}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line-strong))}
+.btn.danger:hover{background:var(--danger-wash)}
+
+.aicard{border:1px solid color-mix(in srgb,var(--violet) 30%,var(--line));border-radius:14px;background:var(--violet-wash);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.aihead{display:flex;align-items:center;gap:12px}
+.aihead>.ic{width:28px;height:28px;color:var(--violet)}
+.aihead>span{flex:1;display:flex;flex-direction:column;min-width:0}
+.aihead b{font-weight:700;font-size:14.5px}
+.aihead small{color:var(--muted);font-size:12.5px}
+.switch{position:relative;display:inline-block;width:46px;height:26px;flex:none}
+.switch input{appearance:none;-webkit-appearance:none;width:46px;height:26px;border-radius:13px;background:var(--line-strong);border:0;margin:0;cursor:pointer;display:block}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch input:checked{background:var(--violet)}
+.switch input:checked::after{transform:translateX(20px)}
+.aistat{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13px}
+.aistat:empty{display:none}
+.aibar{height:6px;background:color-mix(in srgb,var(--violet) 18%,transparent);border-radius:3px;overflow:hidden;max-width:360px}
+.aibar i{display:block;height:100%;width:0;background:var(--violet)}
+
+.pane{padding:0;overflow:hidden}
+.pane-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px 10px}
+.ph-l{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+#sampleTag,#outTag{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pic{width:34px;height:34px;border-radius:10px;background:var(--speech-wash);color:var(--speech);display:grid;place-items:center;flex:none}
+.pane-h h2{font-size:17px;font-weight:700;white-space:nowrap}
+.pane-h small{color:var(--muted);font-size:12.5px;font-weight:400}
+.ph-l .blk{display:flex;flex-direction:column}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.box{margin:0 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+textarea.src{display:block;width:100%;min-height:290px;resize:vertical;border:0;padding:14px;background:transparent;font-family:var(--font-mono);font-size:13px;line-height:1.7;outline:none}
+.out{display:block;margin:0;padding:14px;min-height:290px;white-space:pre-wrap;word-break:break-word;overflow:auto;font-family:var(--font-mono);font-size:13px;line-height:1.7;user-select:text}
+.out .tag{background:var(--tag-bg);color:var(--tag-ink);border-radius:4px;padding:1px 3px}
+.out .add{background:var(--add-bg);color:var(--add-ink);border-radius:4px;padding:1px 3px;font-weight:700}
+.out.empty{color:var(--muted);font-family:var(--font-body);font-size:14px}
+.pane-f{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 18px 14px;color:var(--muted);font-size:12.5px}
+.pane-f code{font-family:var(--font-mono);font-size:12px;color:var(--violet);background:var(--violet-wash);padding:1px 6px;border-radius:5px}
+.pane-f .hlnote{display:inline-flex;align-items:center;gap:8px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--add-bg);box-shadow:inset 0 0 0 1.5px var(--add-ink);display:inline-block}
+.dot.amber{background:var(--tag-bg);box-shadow:inset 0 0 0 1.5px var(--pause)}
+.wc{font-size:12.5px;white-space:nowrap;flex:none}
+.pane-f>span:first-child{min-width:0}
+
+.rhythm{padding-bottom:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:0 18px}
+.tile{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--sunken);min-width:0}
+.tic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none;color:var(--c);background:color-mix(in srgb,var(--c) 16%,var(--panel))}
+.tt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.tl{color:var(--muted);font-size:12px}
+.tt b{font-family:var(--font-display);font-weight:700;font-size:20px}
+#stripWrap{margin:14px 18px 0;display:flex;flex-direction:column;gap:8px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-.strip{display:flex;align-items:center;gap:1px;height:38px;width:100%;overflow:hidden;border-radius:6px;background:var(--sunken)}
+.strip{display:flex;align-items:center;gap:1px;height:38px;width:100%;overflow:hidden;border-radius:8px;background:var(--sunken)}
 .strip i{display:block;min-width:1px}
 .strip .sp{height:46%;background:var(--speech);border-radius:2px;opacity:.9}
 .strip .gp{background:var(--pause)}
 .strip .g-c{height:30%;opacity:.7}.strip .g-s{height:66%}.strip .g-m{height:84%}.strip .g-p{height:100%}
 .strip-empty{color:var(--muted);font-size:13px;min-height:38px;display:flex;align-items:center}
-.stats{display:flex;flex-wrap:wrap;gap:6px 26px;margin:0}
-.stats div{display:flex;flex-direction:column}
-.stats dt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.stats dd{margin:0;font-family:var(--font-mono);font-size:15px}
 
-.panes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.pane{display:flex;flex-direction:column;min-width:0}
-.pane-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);min-height:50px}
-.pane-h h2{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0}
-.pane-h small{color:var(--muted);margin-left:8px;font-weight:400;font-family:var(--font-body);font-size:12px}
-.acts{display:flex;gap:6px}
-.btn{height:30px;padding:0 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel);display:inline-flex;align-items:center;gap:6px;font-weight:500}
-.btn:hover{background:var(--sunken)}
-.btn.primary{background:var(--speech);border-color:var(--speech);color:var(--speech-ink)}
-.btn.primary:hover{background:var(--speech);filter:brightness(1.06)}
-textarea.src{width:100%;min-height:340px;flex:1;resize:vertical;border:0;padding:14px;background:transparent;font-family:var(--font-mono);font-size:13px;line-height:1.7;outline:none}
-.out{margin:0;padding:14px;min-height:340px;flex:1;white-space:pre-wrap;word-break:break-word;overflow:auto;font-family:var(--font-mono);font-size:13px;line-height:1.7;user-select:text}
-.out .tag{background:var(--tag-bg);color:var(--tag-ink);border-radius:4px;padding:1px 3px}
-.out .add{background:var(--tag-bg);color:var(--tag-ink);border-radius:3px;padding:0 3px;font-weight:600;box-shadow:inset 0 -2px 0 var(--pause)}
-.out.empty{color:var(--muted);font-family:var(--font-body);font-size:14px}
-.help{padding:8px 14px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
-.help code{font-family:var(--font-mono);font-size:12px;background:var(--sunken);padding:1px 5px;border-radius:4px}
-.note{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.note{padding:14px 18px;display:flex;flex-direction:column;gap:6px}
 .note p{margin:0;max-width:92ch}
 .note .runs{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
 .note .runs b{color:var(--pause);font-family:var(--font-mono);font-weight:400}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-weight:500;z-index:20}
 
-details.tune .rules{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px}
-details.tune .hint{margin:8px 0 0;color:var(--muted);font-size:12.5px;max-width:70ch}
-.seg{max-width:100%}
-.inp:disabled,.sel:disabled{opacity:.5}
-.chk input:disabled+span{opacity:.5}
-@media (max-width:520px){ .seg button{padding:6px 5px;font-size:13px} }
-details.tune .hint{margin-bottom:0}
-.aibox{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
-.aistat{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13px;min-height:30px}
-.aibar{height:6px;background:var(--sunken);border-radius:3px;overflow:hidden;max-width:360px}
-.aibar i{display:block;height:100%;width:0;background:var(--speech)}
+@media (max-width:1100px){
+  .wavesvg{width:150px}
+  .engines{gap:8px}
+  .eng{padding:12px}
+  .eicon{width:44px;height:44px}
+}
 @media (max-width:860px){
-  .panes{grid-template-columns:minmax(0,1fr)}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .deco{display:none}
+}
+@media (max-width:720px){
   .engines{grid-template-columns:minmax(0,1fr)}
   textarea.src,.out{min-height:240px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+.badge{font-size:11px;font-weight:700;background:var(--violet-wash);color:var(--violet);padding:2px 8px;border-radius:999px;margin-left:2px}
+.seg2{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--panel)}
+.seg2 button{height:32px;padding:0 12px;color:var(--muted);font-weight:500;font-size:13px}
+.seg2 button+button{border-left:1px solid var(--line-strong)}
+.seg2 button[aria-pressed="true"]{background:var(--speech-wash);color:var(--speech);font-weight:700}
+.out.orig{color:var(--muted)}
+.stack-only{display:none}
+details.adv{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+details.adv summary{color:var(--fg);font-weight:600}
+.rule small,.sec-h p,.pane-h small,.aihead small,.tl{font-size:13.5px}
+.pane-f,.wc,.legend,.aistat,.lab{font-size:13.5px}
+.rule b{font-size:14px}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .e-azure{background:#16294D;color:#8DB8FF}
+  :root:not([data-theme="light"]) .e-eleven{background:#222C3A;color:#E7EEF6}
+}
+:root[data-theme="dark"] .e-azure{background:#16294D;color:#8DB8FF}
+:root[data-theme="dark"] .e-eleven{background:#222C3A;color:#E7EEF6}
+@media (max-width:860px){
+  .work{order:-1}
+  .stack-only{display:inline-flex}
+  .sec-h .stack-only{margin-left:auto}
+}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></symbol><symbol id="i-comma" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="8.5" r="2.6" fill="currentColor"/><path d="M13 11c0 3.5-1.5 5.5-4 7"/></symbol><symbol id="i-split" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v6a3 3 0 0 0 3 3h8M13 9l4 4-4 4M5 20h6"/></symbol><symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></symbol><symbol id="i-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v14h-5M10 8l-4 4 4 4M6 12h9"/></symbol><symbol id="i-quote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17v-4h4v4zM6 13c0-3 1-5 4-6M14 17v-4h4v4zM14 13c0-3 1-5 4-6"/></symbol><symbol id="i-quote2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v4h4V7zM10 11c0 3-1 5-4 6M14 7v4h4V7zM18 11c0 3-1 5-4 6"/></symbol><symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol><symbol id="i-lines" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></symbol><symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol><symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol><symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"/></symbol><symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></symbol><symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13M10 11v6M14 11v6"/></symbol><symbol id="i-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20V10M12 20V4M18 20v-7"/></symbol><symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.9A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></symbol><symbol id="i-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></symbol><symbol id="i-pillars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M16 4v16"/></symbol><symbol id="i-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" fill="currentColor"/></symbol><symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></symbol><symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></symbol></defs></svg>
 <div class="wrap">
   <header class="hd">
-    <div>
-      <h1>VO Pause Formatter</h1>
-      <p>Paste a voice-over script, pick the engine that will read it, and copy back text with even, natural pauses.</p>
+    <div class="brand">
+      <span class="logo"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg></span>
+      <div>
+        <h1>VO Pause Formatter</h1>
+        <p>Paste a voice-over script, pick the engine that will read it, and copy back text with even, natural pauses.</p>
+      </div>
     </div>
-    <button class="icon-btn" id="theme" aria-label="Toggle dark mode"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
+    <div class="hd-r">
+      <div class="deco" aria-hidden="true"><svg class="wavesvg" viewBox="0 0 226 60" aria-hidden="true"><rect x="2" y="27.0" width="2.6" height="6" rx="1.3" fill="#0E8F82" opacity="0.34"/><rect x="7" y="24.0" width="2.6" height="12" rx="1.3" fill="#0E8F82" opacity="0.36"/><rect x="12" y="23.0" width="2.6" height="14" rx="1.3" fill="#0E8F82" opacity="0.38"/><rect x="17" y="22.5" width="2.6" height="15" rx="1.3" fill="#0E8F82" opacity="0.40"/><rect x="22" y="22.0" width="2.6" height="16" rx="1.3" fill="#0E8F82" opacity="0.42"/><rect x="27" y="25.5" width="2.6" height="9" rx="1.3" fill="#0E8F82" opacity="0.44"/><rect x="32" y="24.5" width="2.6" height="11" rx="1.3" fill="#0E8F82" opacity="0.47"/><rect x="37" y="21.5" width="2.6" height="17" rx="1.3" fill="#0E8F82" opacity="0.50"/><rect x="42" y="19.0" width="2.6" height="22" rx="1.3" fill="#0E8F82" opacity="0.53"/><rect x="47" y="17.0" width="2.6" height="26" rx="1.3" fill="#0E8F82" opacity="0.56"/><rect x="52" y="20.5" width="2.6" height="19" rx="1.3" fill="#0E8F82" opacity="0.59"/><rect x="57" y="23.0" width="2.6" height="14" rx="1.3" fill="#0E8F82" opacity="0.62"/><rect x="62" y="22.0" width="2.6" height="16" rx="1.3" fill="#0E8F82" opacity="0.66"/><rect x="67" y="16.5" width="2.6" height="27" rx="1.3" fill="#0E8F82" opacity="0.70"/><rect x="72" y="12.0" width="2.6" height="36" rx="1.3" fill="#0E8F82" opacity="0.73"/><rect x="77" y="13.5" width="2.6" height="33" rx="1.3" fill="#0E8F82" opacity="0.77"/><rect x="82" y="16.0" width="2.6" height="28" rx="1.3" fill="#0E8F82" opacity="0.80"/><rect x="87" y="24.5" width="2.6" height="11" rx="1.3" fill="#0E8F82" opacity="0.83"/><rect x="92" y="19.0" width="2.6" height="22" rx="1.3" fill="#0E8F82" opacity="0.87"/><rect x="97" y="9.5" width="2.6" height="41" rx="1.3" fill="#0E8F82" opacity="0.89"/><rect x="102" y="8.0" width="2.6" height="44" rx="1.3" fill="#0E8F82" opacity="0.92"/><rect x="107" y="9.0" width="2.6" height="42" rx="1.3" fill="#0E8F82" opacity="0.94"/><rect x="112" y="16.5" width="2.6" height="27" rx="1.3" fill="#7357E6" opacity="0.96"/><rect x="117" y="25.0" width="2.6" height="10" rx="1.3" fill="#7357E6" opacity="0.98"/><rect x="122" y="13.5" width="2.6" height="33" rx="1.3" fill="#7357E6" opacity="0.99"/><rect x="127" y="8.5" width="2.6" height="43" rx="1.3" fill="#7357E6" opacity="1.00"/><rect x="132" y="6.5" width="2.6" height="47" rx="1.3" fill="#7357E6" opacity="1.00"/><rect x="137" y="10.5" width="2.6" height="39" rx="1.3" fill="#7357E6" opacity="1.00"/><rect x="142" y="21.0" width="2.6" height="18" rx="1.3" fill="#7357E6" opacity="0.99"/><rect x="147" y="21.0" width="2.6" height="18" rx="1.3" fill="#7357E6" opacity="0.98"/><rect x="152" y="14.0" width="2.6" height="32" rx="1.3" fill="#7357E6" opacity="0.96"/><rect x="157" y="9.5" width="2.6" height="41" rx="1.3" fill="#7357E6" opacity="0.94"/><rect x="162" y="10.5" width="2.6" height="39" rx="1.3" fill="#7357E6" opacity="0.92"/><rect x="167" y="18.0" width="2.6" height="24" rx="1.3" fill="#7357E6" opacity="0.89"/><rect x="172" y="23.0" width="2.6" height="14" rx="1.3" fill="#7357E6" opacity="0.87"/><rect x="177" y="21.5" width="2.6" height="17" rx="1.3" fill="#7357E6" opacity="0.83"/><rect x="182" y="16.5" width="2.6" height="27" rx="1.3" fill="#F59E0B" opacity="0.80"/><rect x="187" y="15.0" width="2.6" height="30" rx="1.3" fill="#F59E0B" opacity="0.77"/><rect x="192" y="19.0" width="2.6" height="22" rx="1.3" fill="#F59E0B" opacity="0.73"/><rect x="197" y="21.0" width="2.6" height="18" rx="1.3" fill="#F59E0B" opacity="0.70"/><rect x="202" y="26.0" width="2.6" height="8" rx="1.3" fill="#F59E0B" opacity="0.66"/><rect x="207" y="23.0" width="2.6" height="14" rx="1.3" fill="#F59E0B" opacity="0.62"/><rect x="212" y="20.0" width="2.6" height="20" rx="1.3" fill="#F59E0B" opacity="0.59"/><rect x="217" y="22.5" width="2.6" height="15" rx="1.3" fill="#F59E0B" opacity="0.56"/></svg><span class="mic"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></span></div>
+      <button class="icon-btn" id="helpBtn" aria-label="How to use" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-help"/></svg></button>
+      <button class="icon-btn" id="theme" aria-label="Toggle dark mode"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></button>
+    </div>
   </header>
 
-  <div class="engines" role="radiogroup" aria-label="Voice engine">
-    <button class="eng" role="radio" data-engine="azure" aria-checked="true"><b>Azure</b><span>SSML with break tags</span></button>
-    <button class="eng" role="radio" data-engine="eleven" aria-checked="false"><b>ElevenLabs</b><span>Break tags, or punctuation for v3 and v4</span></button>
-    <button class="eng" role="radio" data-engine="storyline" aria-checked="false"><b>Storyline AI voice</b><span>Plain text only, no markup</span></button>
-  </div>
+  <section class="card help" id="helpPanel" hidden aria-label="How to use">
+    <h3>How to use it</h3>
+    <ol>
+      <li>Choose the engine that will read the script.</li>
+      <li>Paste your script into the Script box, or load the sample.</li>
+      <li>Pick a punctuation strength. Everything the tool adds is highlighted so you can check it.</li>
+      <li>Copy the output into Azure, ElevenLabs or Storyline, and listen to one slide first.</li>
+    </ol>
+  </section>
 
-  <section class="card" aria-label="Pause settings">
-    <div class="ctrl">
-      <div class="f" id="fModel" hidden>
-        <label for="elModel">ElevenLabs model</label>
-        <select class="sel" id="elModel">
-          <option value="tags">Multilingual v2 or Flash (break tags)</option>
-          <option value="plain">Eleven v3 or v4 (punctuation only)</option>
-        </select>
-      </div>
-      <div class="f" id="fProfile">
-        <span class="lab" id="profLab">Pause style</span>
-        <div class="seg" role="group" aria-labelledby="profLab">
-          <button data-profile="minimal" aria-pressed="false">Minimal</button>
-          <button data-profile="light" aria-pressed="false">Light</button>
-          <button data-profile="natural" aria-pressed="true">Natural</button>
-          <button data-profile="relaxed" aria-pressed="false">Relaxed</button>
-          <button data-profile="expressive" aria-pressed="false">Expressive</button>
+  <section class="card sec" aria-label="Voice engine">
+    <div class="sec-h"><span class="num">1</span><div><h2>Choose voice engine</h2><p>Each engine has different rules, so we format the pauses accordingly.</p></div></div>
+    <div class="engines" role="radiogroup" aria-label="Voice engine">
+      <button class="eng" role="radio" data-engine="azure" aria-checked="true"><span class="eicon e-azure"><svg class="ic" aria-hidden="true"><use href="#i-cloud"/></svg></span><span class="etxt"><b>Azure</b><span>SSML with break tags</span></span><span class="radio"></span></button>
+      <button class="eng" role="radio" data-engine="eleven" aria-checked="false"><span class="eicon e-eleven"><svg class="ic" aria-hidden="true"><use href="#i-pillars"/></svg></span><span class="etxt"><b>ElevenLabs</b><span>Break tags, or punctuation for v3 and v4</span></span><span class="radio"></span></button>
+      <button class="eng" role="radio" data-engine="storyline" aria-checked="false"><span class="eicon e-story"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg></span><span class="etxt"><b>Storyline AI voice</b><span>Plain text only, no markup</span></span><span class="radio"></span></button>
+    </div>
+  </section>
+
+  <div class="layout">
+    <div class="side">
+      <section class="card sec" id="settingsCard" aria-label="Pause settings">
+        <div class="sec-h"><span class="num">2</span><div><h2>Pause &amp; punctuation settings</h2><p>Adjust how the script should be formatted. These settings work well for most voice-over content.</p></div><button class="btn stack-only" id="toWork" type="button"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg>Back to script</button></div>
+        <div class="panel">
+          <div class="f" id="fModel" hidden>
+            <label for="elModel">ElevenLabs model</label>
+            <select class="sel" id="elModel">
+              <option value="tags">Multilingual v2 or Flash (break tags)</option>
+              <option value="plain">Eleven v3 or v4 (punctuation only)</option>
+            </select>
+          </div>
+          <div class="f" id="fProfile">
+            <div class="row-h">
+              <span class="lab" id="profLab"><span id="profLabText">Pause style</span><span class="badge" id="customBadge" hidden>Custom</span> <i class="info" title="How many pauses are added. Minimal adds almost none, Expressive adds the most." aria-label="How many pauses are added. Minimal adds almost none, Expressive adds the most.">i</i></span>
+              <button class="btn" id="reset"><svg class="ic" aria-hidden="true"><use href="#i-reset"/></svg>Reset to default</button>
+            </div>
+            <div class="seg" role="group" aria-labelledby="profLab">
+              <button data-profile="minimal" aria-pressed="false">Minimal</button>
+              <button data-profile="light" aria-pressed="false">Light</button>
+              <button data-profile="natural" aria-pressed="true">Natural</button>
+              <button data-profile="relaxed" aria-pressed="false">Relaxed</button>
+              <button data-profile="expressive" aria-pressed="false">Expressive</button>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="f" id="fDash" hidden>
+              <label for="dashStyle">Dash style <i class="info" title="The mark used for the longer pauses." aria-label="The mark used for the longer pauses.">i</i></label>
+              <select class="sel" id="dashStyle">
+                <option value="em">Em dash —</option>
+                <option value="hyphen">Spaced hyphen -</option>
+                <option value="ellipsis">Ellipsis …</option>
+              </select>
+            </div>
+            <div class="f" id="fGap" hidden>
+              <label for="gap">Gap after each sentence <i class="info" title="How sentences are separated in the output." aria-label="How sentences are separated in the output.">i</i></label>
+              <select class="sel" id="gap">
+                <option value="space">Same line</option>
+                <option value="line">New line</option>
+                <option value="blank">Blank line</option>
+              </select>
+            </div>
+            <div class="f" id="fVoice">
+              <label for="voice">Azure voice name</label>
+              <input class="inp mono" id="voice" type="text" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="f" id="fWrap">
+              <span class="lab">Output</span>
+              <label class="chk" style="height:38px"><input type="checkbox" id="wrap"> Wrap in speak and voice</label>
+            </div>
+          </div>
+          <div class="f">
+            <label for="wpm">Speaking rate (words per min) <i class="info" title="Used for the length estimate. Plain text has no timings." aria-label="Used for the length estimate. Plain text has no timings.">i</i></label>
+            <div class="rate-row">
+              <input class="inp mono" id="wpm" type="number" min="40" max="400" step="5">
+              <div class="slider"><input type="range" id="wpmRange" min="90" max="220" step="5" aria-label="Speaking rate slider"><div class="ticks"><span>Slow</span><span>Normal</span><span>Fast</span></div></div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="f" id="fDash" hidden>
-        <label for="dashStyle">Dash style</label>
-        <select class="sel" id="dashStyle">
-          <option value="em">Em dash —</option>
-          <option value="hyphen">Spaced hyphen -</option>
-          <option value="ellipsis">Ellipsis …</option>
-        </select>
-      </div>
-      <div class="f" id="fGap" hidden>
-        <label for="gap">Gap after each sentence</label>
-        <select class="sel" id="gap">
-          <option value="space">Same line</option>
-          <option value="line">New line</option>
-          <option value="blank">Blank line</option>
-        </select>
-      </div>
-      <div class="f" id="fVoice">
-        <label for="voice">Azure voice name</label>
-        <input class="inp mono" id="voice" type="text" spellcheck="false" autocomplete="off" style="width:230px">
-      </div>
-      <div class="f" id="fWrap">
-        <span class="lab">Output</span>
-        <label class="chk" style="align-items:center;height:34px"><input type="checkbox" id="wrap"> Wrap in speak and voice</label>
-      </div>
-      <div class="f">
-        <label for="wpm">Speaking rate (words per min)</label>
-        <input class="inp mono" id="wpm" type="number" min="80" max="260" step="5" style="width:110px">
-      </div>
-    </div>
-    <div class="checks">
-      <label class="chk" id="cInner"><input type="checkbox" id="optInner"><span>Short pauses inside sentences<small id="innerHint">Commas, colons, semicolons and dashes.</small></span></label>
-      <label class="chk" id="cLead"><input type="checkbox" id="optLead"><span>Skip commas after one-word lead-ins<small>Keeps "So," and "Next," at the start of a sentence from getting a pause.</small></span></label>
-      <label class="chk"><input type="checkbox" id="optLines"><span>My line breaks end a sentence<small>Adds a full stop where a line has none.</small></span></label>
-      <label class="chk" id="cOne"><input type="checkbox" id="optOne"><span>One sentence per line in the output<small>Easier to read and check.</small></span></label>
-      <label class="chk" id="cAdd" hidden><input type="checkbox" id="optAdd"><span>Add commas, dashes and full stops<small>Every addition is highlighted so you can check it.</small></span></label>
-      <label class="chk" id="cSplit" hidden><input type="checkbox" id="optSplit"><span>Split very long sentences<small>Adds a full stop where a new clause begins.</small></span></label>
-      <label class="chk" id="cDash" hidden><input type="checkbox" id="optDash"><span>Use dashes for the longest pauses<small>A dash gives a firmer pause than a comma.</small></span></label>
-    </div>
-    <details class="tune" id="tune">
-      <summary>Fine-tune pause lengths (milliseconds)</summary>
-      <div class="tunegrid" id="tuneGrid"></div>
-    </details>
-    <details class="tune" id="punct" open hidden>
-      <summary>Punctuation rules and thresholds</summary>
-      <div class="rules" id="ruleList"></div>
-      <div class="tunegrid" id="numGrid"></div>
-      <p class="hint">Thresholds count the words in a clause before the conjunction. 99 switches that rule off. Changing any value here sets the strength to custom.</p>
-      <div class="f" style="margin-top:10px;max-width:280px">
-        <label for="markerStyle">[pause] marker becomes</label>
-        <select class="sel" id="markerStyle">
-          <option value="auto">Auto, by length</option>
-          <option value="dash">Always a dash</option>
-          <option value="ellipsis">Always an ellipsis</option>
-        </select>
-      </div>
-    </details>
-    <div class="aibox" id="fAI" hidden>
-      <label class="chk"><input type="checkbox" id="optAI"><span>AI comma suggestions (optional)<small>A small model runs on your computer and suggests where commas belong, on top of the rules. Your script is never sent anywhere. The first use downloads about 560 MB, saved in this browser.</small></span></label>
-      <div class="aistat"><span id="aiStatus"></span><button class="btn" id="aiGo" hidden>Download model (560 MB)</button><button class="btn" id="aiRemove" hidden>Remove model from this browser</button></div>
-      <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
-    </div>
-  </section>
 
-  <section class="card strip-card" aria-label="Rhythm preview">
-    <div class="strip-h">
-      <h2>Rhythm</h2>
-      <div class="legend" id="legend"><span><i style="background:var(--speech)"></i>Speech</span><span><i style="background:var(--pause);opacity:.7"></i>Short pause</span><span><i style="background:var(--pause)"></i>Sentence or marker</span></div>
+        <div class="panel" id="rulesPanel">
+          <h3>Formatting rules</h3>
+          <div class="rules">
+            <label class="rule"><input type="checkbox" id="optLines"><svg class="ic ri" aria-hidden="true"><use href="#i-doc"/></svg><span><b>My line breaks end a sentence</b><small>Adds a full stop where a line has none.</small></span></label>
+            <label class="rule" id="cInner"><input type="checkbox" id="optInner"><svg class="ic ri" aria-hidden="true"><use href="#i-comma"/></svg><span><b>Short pauses inside sentences</b><small id="innerHint">Commas, colons, semicolons and dashes.</small></span></label>
+            <label class="rule" id="cLead"><input type="checkbox" id="optLead"><svg class="ic ri" aria-hidden="true"><use href="#i-enter"/></svg><span><b>Skip commas after one-word lead-ins</b><small>Keeps "So," and "Next," at the start of a sentence from getting a pause.</small></span></label>
+            <label class="rule" id="cOne"><input type="checkbox" id="optOne"><svg class="ic ri" aria-hidden="true"><use href="#i-lines"/></svg><span><b>One sentence per line in the output</b><small>Easier to read and check.</small></span></label>
+            <label class="rule" id="cAdd"><input type="checkbox" id="optAdd"><svg class="ic ri" aria-hidden="true"><use href="#i-comma"/></svg><span><b>Add commas, dashes and full stops</b><small>Every addition is highlighted so you can check it.</small></span></label>
+            <label class="rule" id="cSplit"><input type="checkbox" id="optSplit"><svg class="ic ri" aria-hidden="true"><use href="#i-split"/></svg><span><b>Split very long sentences</b><small>Adds a full stop where a new clause begins.</small></span></label>
+            <label class="rule" id="cDash"><input type="checkbox" id="optDash"><svg class="ic ri" aria-hidden="true"><use href="#i-dash"/></svg><span><b>Use dashes for the longest pauses</b><small>A dash gives a firmer pause than a comma.</small></span></label>
+          </div>
+          <details class="tune adv" id="advRules" hidden>
+            <summary>Advanced: pause rules and thresholds</summary>
+            <div class="rules" style="margin-top:10px"><div class="rules-gen" id="ruleList"></div></div>
+          <div id="punct" hidden style="margin-top:14px">
+            <h3 style="margin-bottom:10px">Thresholds <i class="info" title="Words a clause needs before a rule adds a comma. 99 switches that rule off." aria-label="Words a clause needs before a rule adds a comma. 99 switches that rule off.">i</i></h3>
+            <div class="thr">
+              <div id="numGrid"></div>
+              <div class="f" id="fMarker">
+                <label for="markerStyle">[Pause] marker becomes <i class="info" title="What a [pause] marker in your script turns into." aria-label="What a [pause] marker in your script turns into.">i</i></label>
+                <select class="sel" id="markerStyle">
+                  <option value="auto">Auto, by length</option>
+                  <option value="dash">Always a dash</option>
+                  <option value="ellipsis">Always an ellipsis</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          </details>
+          <details class="tune" id="tune">
+            <summary>Fine-tune pause lengths (milliseconds)</summary>
+            <div class="tunegrid" id="tuneGrid"></div>
+          </details>
+        </div>
+        <div class="aicard" id="fAI" hidden>
+          <div class="aihead">
+            <svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>
+            <span><b>AI comma suggestions (optional)</b><small>A small model runs on your computer and suggests where commas help. Your script is never sent anywhere. The first use downloads about 560 MB, which usually takes a few minutes. It is saved in this browser.</small></span>
+            <label class="switch"><input type="checkbox" id="optAI" aria-label="AI comma suggestions"></label>
+          </div>
+          <div class="aistat"><span id="aiStatus"></span><button class="btn" id="aiGo" hidden>Download model (560 MB)</button><button class="btn" id="aiRemove" hidden>Remove model from this browser</button></div>
+          <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
+        </div>
+      </section>
     </div>
-    <div id="strip" class="strip" role="img" aria-label="Speech and pause rhythm"></div>
-    <dl class="stats" id="stats"></dl>
-  </section>
 
-  <div class="panes">
-    <section class="card pane" aria-label="Script input">
-      <div class="pane-h">
-        <h2>Script<small id="sampleTag"></small></h2>
-        <div class="acts"><button class="btn" id="sample">Load sample</button><button class="btn" id="clear">Clear</button></div>
-      </div>
-      <textarea class="src" id="src" spellcheck="true" placeholder="Paste your voice-over script here. Blank lines start a new paragraph." aria-label="Voice-over script"></textarea>
-      <div class="help">Write <code>[pause]</code>, <code>[short pause]</code>, <code>[long pause]</code> or <code>[pause 1.2s]</code> anywhere to force a pause. Plain-text engines turn it into punctuation or a paragraph break.</div>
-    </section>
-    <section class="card pane" aria-label="Formatted output">
-      <div class="pane-h">
-        <h2>Output<small id="outTag"></small></h2>
-        <div class="acts"><button class="btn primary" id="copy">Copy output</button></div>
-      </div>
-      <pre class="out" id="out" tabindex="0" aria-live="polite"></pre>
-    </section>
+    <div class="work">
+      <section class="card pane" id="scriptCard" aria-label="Script input">
+        <div class="pane-h">
+          <div class="ph-l"><span class="pic"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg></span><h2>Script</h2><small id="sampleTag"></small></div>
+          <div class="acts"><button class="btn" id="sample"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg>Load sample</button><button class="btn danger" id="clear"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Clear</button></div>
+        </div>
+        <div class="box"><textarea class="src" id="src" spellcheck="true" placeholder="Paste your voice-over script here. Blank lines start a new paragraph." aria-label="Voice-over script"></textarea></div>
+        <div class="pane-f"><span>Use <code>[pause]</code> <code>[short pause]</code> <code>[long pause]</code> or <code>[pause 1.2s]</code> anywhere to force a pause.</span><span class="wc" id="wordsIn"></span></div>
+      </section>
+
+      <section class="card pane" aria-label="Formatted output">
+        <div class="pane-h">
+          <div class="ph-l"><span class="pic"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg></span><h2>Output</h2><small id="outTag"></small></div>
+          <div class="acts"><div class="seg2" role="group" aria-label="Output view"><button id="vwOut" aria-pressed="true">Result</button><button id="vwOrig" aria-pressed="false">Original</button></div><button class="btn stack-only" id="toSettings" type="button"><svg class="ic" aria-hidden="true"><use href="#i-lines"/></svg>Settings</button><button class="btn primary" id="copy"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copy output</button></div>
+        </div>
+        <div class="box"><pre class="out" id="out" tabindex="0" aria-live="polite"></pre></div>
+        <div class="pane-f"><span class="hlnote"><i class="dot" id="hlDot"></i><span id="hlNote">Added punctuation is highlighted</span></span><span class="wc" id="wordsOut"></span></div>
+      </section>
+
+      <section class="card pane rhythm" aria-label="Rhythm summary">
+        <div class="pane-h">
+          <div class="ph-l"><span class="pic"><svg class="ic" aria-hidden="true"><use href="#i-bars"/></svg></span><div class="blk"><h2>Rhythm summary</h2><small>See how the script will be paced with the current settings.</small></div></div>
+          <button class="btn" id="viewDetails" hidden><svg class="ic" aria-hidden="true"><use href="#i-bars"/></svg><span id="vdText">Hide details</span></button>
+        </div>
+        <div class="tiles" id="stats"></div>
+        <div id="stripWrap" hidden>
+          <div class="legend" id="legend"><span><i style="background:var(--speech)"></i>Speech</span><span><i style="background:var(--pause);opacity:.7"></i>Short pause</span><span><i style="background:var(--pause)"></i>Sentence or marker</span></div>
+          <div id="strip" class="strip" role="img" aria-label="Speech and pause rhythm"></div>
+        </div>
+      </section>
+
+      <section class="card note" id="notes" aria-label="Engine notes"></section>
+    </div>
   </div>
-
-  <section class="card note" id="notes" aria-label="Engine notes"></section>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -708,10 +864,11 @@ details.tune .hint{margin-bottom:0}
 "Welcome to Fire Safety Essentials. In this short module you will learn how to spot hazards, use an extinguisher, and leave the building safely.\n\n"+
 "Before we begin, take a moment to find your nearest exit. [pause] Notice where the alarm points are, and where the assembly area is, because in an emergency there is no time to look.\n\n"+
 "Every employee must check the electrical panels in each building and record any fault they find in the shared log before the end of their shift. If you notice smoke or a burning smell you should press the nearest alarm and then leave the area at once. The extinguisher holds about 9.5 litres which is enough for roughly 12 seconds although most people empty it far sooner than they expect. Dr. Rao, our safety officer, puts it simply: stay calm, stay low, and keep moving. Ready? Let's get started.";
-  var RULE_KEYS = [['lead','Commas after lead-ins','For example, So, Next, However,'],['intro','Comma after an opening clause','If you are ready, press start.'],['conj','Comma before and, but, so, or','Only between two long clauses. See the thresholds.'],['sub','Comma before which, although, whereas','Sets off an added thought.'],['long','Break up long unpunctuated stretches','A comma or dash near the middle.']];
-  var NUMS = [['andTh','Comma before “and” after'],['butTh','Comma before “but” after'],['soTh','Comma before “so” after'],['orTh','Comma before “or” after'],['longN','Break a stretch over'],['sentN','Split a sentence over'],['minWords','Skip sentences under']];
+  var RULE_KEYS = [['lead','Pause after lead-in words','For example, So, Next, However,'],['intro','Pause after an opening clause','If you are ready, press start.'],['conj','Pause between two long ideas','Before and, but, so or or. See the thresholds.'],['sub','Pause before an added thought','Before which, although, whereas.'],['long','Break up long runs of words','A comma or dash near the middle.']];
+  var NUMS = [['andTh','Before “and”, after'],['butTh','Before “but”, after'],['soTh','Before “so”, after'],['orTh','Before “or”, after'],['longN','Break a run longer than'],['sentN','Split a sentence longer than'],['minWords','Leave sentences shorter than']];
   var PMIN = {longN:4,sentN:8};
   function pmin(k){ return PMIN[k] || 1; }
+  var RULE_ICONS = {lead:'enter',intro:'quote',conj:'link',sub:'quote2',long:'lines'};
   var PROFILES = ['minimal','light','natural','relaxed','expressive','custom'];
   var VALS = [['comma','Comma'],['semi','Semicolon, colon'],['dash','Dash'],['sentence','Full stop'],['question','? and !'],['ellipsis','Ellipsis'],['paragraph','Paragraph'],['beat','[pause] marker']];
   var NOTES = {
@@ -758,7 +915,7 @@ details.tune .hint{margin-bottom:0}
   var tuneGrid = $('#tuneGrid');
   tuneGrid.innerHTML = VALS.map(function(v){ return '<div class="f"><label for="v-'+v[0]+'">'+v[1]+'</label><input class="inp" type="number" id="v-'+v[0]+'" data-val="'+v[0]+'" min="0" max="5000" step="50"></div>'; }).join('');
 
-  $('#ruleList').innerHTML = RULE_KEYS.map(function(r){ return '<label class="chk"><input type="checkbox" id="r-'+r[0]+'" data-rule="'+r[0]+'"><span>'+r[1]+'<small>'+r[2]+'</small></span></label>'; }).join('');
+  $('#ruleList').innerHTML = RULE_KEYS.map(function(r){ return '<label class="rule"><input type="checkbox" id="r-'+r[0]+'" data-rule="'+r[0]+'"><svg class="ic ri" aria-hidden="true"><use href="#i-'+(RULE_ICONS[r[0]]||'comma')+'"/></svg><span><b>'+r[1]+'</b><small>'+r[2]+'</small></span></label>'; }).join('');
   $('#numGrid').innerHTML = NUMS.map(function(n){ return '<div class="f"><label for="n-'+n[0]+'">'+n[1]+'</label><input class="inp" type="number" id="n-'+n[0]+'" data-pr="'+n[0]+'" min="'+pmin(n[0])+'" max="99" step="1"></div>'; }).join('');
   function setCustom(){ state.profile='custom'; document.querySelectorAll('[data-profile]').forEach(function(b){ b.setAttribute('aria-pressed','false'); }); }
 
@@ -766,16 +923,16 @@ details.tune .hint{margin-bottom:0}
     var m = mode();
     document.querySelectorAll('[data-engine]').forEach(function(b){ b.setAttribute('aria-checked', String(b.dataset.engine===state.engine)); });
     document.querySelectorAll('[data-profile]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.profile===state.profile)); });
-    $('#elModel').value = state.elModel; $('#gap').value = state.gap; $('#voice').value = state.voice; $('#wrap').checked = state.wrap; $('#wpm').value = state.wpm;
+    $('#elModel').value = state.elModel; $('#gap').value = state.gap; $('#voice').value = state.voice; $('#wrap').checked = state.wrap; $('#wpm').value = state.wpm; $('#wpmRange').value = Math.min(220,Math.max(90,state.wpm));
     $('#optInner').checked = state.inner; $('#optLead').checked = state.skipLead; $('#optLines').checked = state.lineBreaks; $('#optOne').checked = state.oneLine;
     VALS.forEach(function(v){ $('#v-'+v[0]).value = state.vals[v[0]]; });
     $('#fModel').hidden = state.engine!=='eleven';
     $('#fProfile').hidden = false;
-    $('#profLab').textContent = m==='plain' ? 'Punctuation strength' : 'Pause style';
+    $('#profLabText').textContent = m==='plain' ? 'Punctuation strength' : 'Pause style';
     $('#cAdd').hidden = $('#cSplit').hidden = $('#cDash').hidden = m!=='plain';
     $('#optAdd').checked = state.addPunct; $('#optSplit').checked = state.splitLong; $('#optDash').checked = state.useDash;
     $('#fAI').hidden = m!=='plain'; $('#optAI').checked = state.ai;
-    $('#fGap').hidden = m!=='plain'; $('#fDash').hidden = m!=='plain'; $('#punct').hidden = m!=='plain';
+    $('#fGap').hidden = m!=='plain'; $('#fDash').hidden = m!=='plain'; $('#punct').hidden = m!=='plain'; $('#ruleList').hidden = m!=='plain'; $('#advRules').hidden = m!=='plain';
     $('#dashStyle').value = state.dashStyle; $('#markerStyle').value = state.markerStyle;
     RULE_KEYS.forEach(function(r){ var e=$('#r-'+r[0]); e.checked=!!state.pr[r[0]]; e.disabled=!state.addPunct; });
     NUMS.forEach(function(n){ var e=$('#n-'+n[0]); e.value=state.pr[n[0]]; e.disabled=!state.addPunct; });
@@ -791,18 +948,25 @@ details.tune .hint{margin-bottom:0}
     return h.replace(/(&lt;break [^&]*?\/&gt;)/g,'<span class="tag">$1</span>');
   }
 
+  var showStrip = true, viewOrig = false;
   function drawStrip(r,m){
-    var strip=$('#strip'), wpm=state.wpm>0?state.wpm:150;
-    $('#legend').hidden = m==='plain';
-    if(m==='plain'){ strip.className='strip-empty'; strip.innerHTML='Plain text carries no timings, so there is no rhythm strip for this engine.'; strip.removeAttribute('role'); return; }
+    var strip=$('#strip'), wpm=state.wpm>0?state.wpm:150, show = m!=='plain';
+    $('#viewDetails').hidden = !show; $('#stripWrap').hidden = !show || !showStrip;
+    $('#vdText').textContent = showStrip ? 'Hide details' : 'View details';
+    if(!show) return;
     strip.className='strip'; strip.setAttribute('role','img');
-    if(!r.stats.segments.length){ strip.className='strip-empty'; strip.innerHTML='Paste a script to see where the pauses fall.'; return; }
+    if(!r.stats.segments.length){ strip.className='strip-empty'; strip.removeAttribute('role'); strip.innerHTML='Paste a script to see where the pauses fall.'; return; }
     var h='';
     r.stats.segments.forEach(function(s){
       if(s.words>0) h += '<i class="sp" style="flex:'+(s.words/wpm*60).toFixed(3)+' 1 0"></i>';
       if(s.ms>=C.MIN_MS) h += '<i class="gp g-'+s.type+'" title="'+s.ms+' ms" style="flex:'+(s.ms/1000).toFixed(3)+' 1 0"></i>';
     });
     strip.innerHTML = h;
+  }
+  var TILES = {'Words':['doc','#E0457B'],'Sentences':['lines','#3B82F6'],'Commas added':['comma','#F59E0B'],'Dashes added':['dash','#8B5CF6'],'Full stops added':['dot','#16A34A'],'Spaces fixed':['sparkle','#CA9A04'],'AI commas':['sparkle','#7C5CE0'],'Breaks added':['comma','#F59E0B'],'Pause time':['bars','#3B82F6'],'Estimated length':['wave','#16A34A']};
+  function tileHTML(x){
+    var t = TILES[x[0]] || ['bars','#0E8F82'];
+    return '<div class="tile" style="--c:'+t[1]+'"><span class="tic"><svg class="ic" aria-hidden="true"><use href="#i-'+t[0]+'"/></svg></span><span class="tt"><span class="tl">'+x[0]+'</span><b>'+x[1]+'</b></span></div>';
   }
 
   function update(){
@@ -815,9 +979,15 @@ details.tune .hint{margin-bottom:0}
     raw = r.text;
     var out = $('#out');
     if(!raw){ out.className='out empty'; out.textContent='Your formatted script will appear here.'; }
+    else if(viewOrig){ out.className='out orig'; out.textContent = text; }
     else{ out.className='out'; out.innerHTML = highlight(r.marked); }
     $('#outTag').textContent = m==='azure' ? 'SSML' : (m==='eleven' ? 'ElevenLabs tags' : (state.addPunct ? 'Plain text, additions highlighted' : 'Plain text'));
+    if(viewOrig && raw) $('#outTag').textContent = 'Original script, unchanged';
+    $('#customBadge').hidden = state.profile!=='custom';
     $('#sampleTag').textContent = text===SAMPLE ? 'Sample loaded. Paste your own to replace it.' : '';
+    $('#wordsIn').textContent = 'Words: '+r.stats.words; $('#wordsOut').textContent = 'Words: '+r.stats.words;
+    $('#hlNote').textContent = m==='plain' ? 'Added punctuation is highlighted' : 'Pause tags are highlighted';
+    $('#hlDot').className = 'dot' + (m==='plain' ? '' : ' amber');
     drawStrip(r,m);
     var s = r.stats, st;
     if(m==='plain'){
@@ -826,7 +996,7 @@ details.tune .hint{margin-bottom:0}
       st = [['Words',s.words],['Sentences',s.sentences],['Breaks added',s.breaks],['Pause time',(s.pauseMs/1000).toFixed(1)+' s'],['Estimated length','~'+mmss(s.durationSec)]];
     }
     if(aiInfo) st.splice(2,0,['AI commas',aiInfo.count+(aiInfo.pending?' …':'')]);
-    $('#stats').innerHTML = st.map(function(x){ return '<div><dt>'+x[0]+'</dt><dd>'+x[1]+'</dd></div>'; }).join('');
+    $('#stats').innerHTML = st.map(tileHTML).join('');
     var key = m==='azure' ? 'azure' : (m==='eleven' ? 'elevenTags' : (state.engine==='eleven' ? 'elevenPlain' : 'storyline'));
     var n = '<p>'+NOTES[key]+'</p>';
     if(s.clamped) n += '<p><b>'+s.clamped+' pause'+(s.clamped>1?'s were':' was')+' shortened to the 3 second ElevenLabs limit.</b></p>';
@@ -839,7 +1009,7 @@ details.tune .hint{margin-bottom:0}
   function renderAI(){
     var A=window.VOAI, st=A.status, txt='', go=false, rm=false, bar=false;
     if(state.ai || st==='loading' || st==='ready'){
-      if(st==='loading'){ txt='Downloading the model… '+A.progress+'% of about '+A.total+' MB. Keep this tab open.'; bar=true; }
+      if(st==='loading'){ txt='Downloading the model… '+A.progress+'% of about '+A.total+' MB. This can take a few minutes. Keep this tab open.'; bar=true; }
       else if(st==='ready'){ txt = state.ai ? (A.busy||A.todo.length ? 'Model ready. Checking sentences…' : 'Model ready. Running on this device.') : 'Model is loaded but switched off.'; rm=true; }
       else if(st==='error'){ txt='Could not load the model: '+A.error+' Check your connection and try again.'; go=true; }
       else if(state.ai){ txt='The model is not downloaded yet.'; go=true; }
@@ -877,7 +1047,8 @@ details.tune .hint{margin-bottom:0}
   $('#gap').addEventListener('change',function(){ state.gap=this.value; refresh(); });
   $('#voice').addEventListener('input',function(){ state.voice=this.value; update(); save(); });
   $('#wrap').addEventListener('change',function(){ state.wrap=this.checked; update(); save(); });
-  $('#wpm').addEventListener('input',function(){ var n=+this.value; if(n>=40&&n<=400){ state.wpm=n; update(); save(); } });
+  $('#wpm').addEventListener('input',function(){ var n=+this.value; if(n>=40&&n<=400){ state.wpm=n; $('#wpmRange').value=Math.min(220,Math.max(90,n)); update(); save(); } });
+  $('#wpmRange').addEventListener('input',function(){ var n=+this.value; state.wpm=n; $('#wpm').value=n; update(); save(); });
   $('#optInner').addEventListener('change',function(){ state.inner=this.checked; state.touchedInner=true; update(); save(); });
   $('#optLead').addEventListener('change',function(){ state.skipLead=this.checked; update(); save(); });
   $('#optLines').addEventListener('change',function(){ state.lineBreaks=this.checked; update(); save(); });
@@ -905,6 +1076,19 @@ details.tune .hint{margin-bottom:0}
       toast('Selected. Press Ctrl+C or ⌘C to copy');
     }
     try{ navigator.clipboard.writeText(raw).then(function(){ toast('Copied'); },fallback); }catch(e){ fallback(); }
+  });
+  $('#helpBtn').addEventListener('click',function(){ var p=$('#helpPanel'); p.hidden=!p.hidden; this.setAttribute('aria-expanded',String(!p.hidden)); });
+  function setView(o){ viewOrig=o; $('#vwOut').setAttribute('aria-pressed',String(!o)); $('#vwOrig').setAttribute('aria-pressed',String(o)); update(); }
+  $('#vwOut').addEventListener('click',function(){ setView(false); });
+  $('#vwOrig').addEventListener('click',function(){ setView(true); });
+  $('#toSettings').addEventListener('click',function(){ $('#settingsCard').scrollIntoView({behavior:'smooth',block:'start'}); });
+  $('#toWork').addEventListener('click',function(){ $('#scriptCard').scrollIntoView({behavior:'smooth',block:'start'}); });
+  $('#viewDetails').addEventListener('click',function(){ showStrip=!showStrip; update(); });
+  $('#reset').addEventListener('click',function(){
+    var keep={engine:state.engine,elModel:state.elModel,voice:state.voice,wrap:state.wrap,ai:state.ai}, fresh=clone(DEFAULTS);
+    Object.keys(fresh).forEach(function(k){ state[k]=fresh[k]; });
+    Object.keys(keep).forEach(function(k){ if(keep[k]!==undefined) state[k]=keep[k]; });
+    autoInner(); refresh(); toast('Settings reset to default');
   });
   $('#theme').addEventListener('click',function(){
     var root=document.documentElement, ex=root.getAttribute('data-theme');
