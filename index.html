@@ -315,6 +315,15 @@ details.adv summary{color:var(--fg);font-weight:600}
                 <option value="blank">Blank line</option>
               </select>
             </div>
+            <div class="f" id="fSent" hidden>
+              <label for="sentPause">Pause between sentences <i class="info" title="Measured in Storyline v3 with a blank line between sentences: roughly 1 s, 1.5 s, 1.8 s and 2.2 s. The tags need the v3 model." aria-label="Measured in Storyline v3 with a blank line between sentences: roughly 1 s, 1.5 s, 1.8 s and 2.2 s. The tags need the v3 model.">i</i></label>
+              <select class="sel" id="sentPause">
+                <option value="off">Normal: no extra mark</option>
+                <option value="short">Longer: [short pause] (v3 only)</option>
+                <option value="em">Long: em dash —</option>
+                <option value="pause">Longest: [pause] (v3 only)</option>
+              </select>
+            </div>
             <div class="f" id="fVoice">
               <label for="voice">Azure voice name</label>
               <input class="inp mono" id="voice" type="text" spellcheck="false" autocomplete="off">
@@ -357,6 +366,7 @@ details.adv summary{color:var(--fg);font-weight:600}
                   <option value="auto">Auto, by length</option>
                   <option value="dash">Always a dash</option>
                   <option value="ellipsis">Always an ellipsis</option>
+                  <option value="tag">Keep as a [pause] tag (v3 only)</option>
                 </select>
               </div>
             </div>
@@ -676,7 +686,7 @@ details.adv summary{color:var(--fg);font-weight:600}
   }
 
   function convert(input,cfg){
-    var stats={words:0,sentences:0,paragraphs:0,breaks:0,pauseMs:0,clamped:0,longRuns:[],segments:[],durationSec:0,added:{comma:0,dash:0,stop:0,space:0}};
+    var stats={words:0,sentences:0,paragraphs:0,breaks:0,pauseMs:0,clamped:0,longRuns:[],segments:[],durationSec:0,added:{comma:0,dash:0,stop:0,space:0,tag:0}};
     var src = String(input||'').replace(/\r\n?/g,'\n').replace(/ /g,' ');
     src = src.replace(/<\/?(?:speak|voice|break|prosody|p|s|mark|emphasis|say-as)\b[^>]*>/gi,' ');
     if(!/\S/.test(src)) return {text:'',marked:'',core:'',stats:stats};
@@ -730,17 +740,31 @@ details.adv summary{color:var(--fg);font-weight:600}
     var out;
     if(mode==='plain'){
       var gap = cfg.gap==='space' ? ' ' : (cfg.gap==='blank' ? '\n\n' : '\n');
+      var sd = cfg.sentPause==='em' ? '—' : (cfg.sentPause==='short' ? '[short pause]' : (cfg.sentPause==='pause' ? '[pause]' : ''));
+      var sk = cfg.sentPause==='em' ? 'dash' : 'tag';
       out = core.replace(/([cspm])(\d+)[ \t]*/g,function(m,tp,ms,off,whole){
         ms=+ms;
-        if(tp==='p') return '\n\n';
-        if(tp==='s') return gap;
+        if(tp==='p' || tp==='s'){
+          var sep = tp==='p' ? '\n\n' : gap;
+          if(!sd) return sep;
+          stats.added[sk]++;
+          return ' '+MK(sd)+sep;
+        }
         if(tp==='c') return ' ';
         var pre = whole.slice(Math.max(0,off-4),off).replace(/[]/g,'');
         var prev = pre.slice(-1), prev2 = pre.slice(-2,-1);
         var endP = /[.!?…]/.test(prev) || (/["”’')\]]/.test(prev) && /[.!?…]/.test(prev2));
         var dashS = cfg.dashStyle==='hyphen' ? ' - ' : (cfg.dashStyle==='ellipsis' ? '… ' : ' — ');
+        if(endP){
+          var base = ms>=1000 ? '\n\n' : (ms>=500 ? '\n' : ' ');
+          var sepm = (gap==='\n\n' || base==='\n\n') ? '\n\n' : ((gap==='\n' || base==='\n') ? '\n' : ' ');
+          if(cfg.markerStyle==='tag') return ' '+(ms<vals.beat ? '[short pause]' : '[pause]')+sepm;
+          if(!sd) return sepm;
+          stats.added[sk]++;
+          return ' '+MK(sd)+sepm;
+        }
+        if(cfg.markerStyle==='tag') return ' '+(ms<vals.beat ? '[short pause]' : '[pause]')+' ';
         if(ms>=1000) return '\n\n';
-        if(endP) return ms>=500 ? '\n' : ' ';
         if(cfg.markerStyle==='dash') return dashS;
         if(cfg.markerStyle==='ellipsis') return '… ';
         return ms>=500 ? dashS : ', ';
@@ -875,10 +899,10 @@ details.adv summary{color:var(--fg);font-weight:600}
     azure:'Each break is added on top of the voice’s own pause at a punctuation mark, so Natural is already a light touch. Azure accepts breaks up to 20 seconds. Paste the full output into the SSML box, or untick the wrapper to paste only the text.',
     elevenTags:'Break tags work on Multilingual v2 and the Flash models, up to 3 seconds each. ElevenLabs warns that many breaks can speed speech up or add noise, so pauses inside sentences start switched off here.',
     elevenPlain:'Eleven v3 and v4 do not read break tags, so pauses have to come from punctuation. This adds commas, dashes and full stops by rule and highlights each one. A dash is the most dependable way to ask for a short pause. The rules do not understand the sentence, so check the highlighted marks before you use them.',
-    storyline:'Storyline’s built-in AI voices take plain text, so pauses have to come from punctuation. This adds commas, dashes and full stops by rule and highlights each one so you can keep or fix it. The rules do not understand the sentence, so check the highlighted marks. Pause markers become a comma, a dash or a paragraph break depending on length. Test one slide first.'
+    storyline:'Storyline’s built-in AI voices take plain text, so pauses have to come from punctuation. This adds commas, dashes and full stops by rule and highlights each one so you can keep or fix it. The rules do not understand the sentence, so check the highlighted marks. Pause markers become a comma, a dash or a paragraph break depending on length. Test one slide first. The [pause] and [short pause] tags only work with the v3 model; other models may read them aloud.'
   };
   function clone(o){ return JSON.parse(JSON.stringify(o)); }
-  var DEFAULTS = {engine:'storyline',elModel:'tags',profile:'natural',vals:clone(C.PRESETS.natural),inner:true,skipLead:true,lineBreaks:true,oneLine:false,gap:'line',addPunct:true,splitLong:true,useDash:true,ai:false,pr:clone(C.RULES.natural),dashStyle:'em',markerStyle:'auto',voice:'en-US-JennyNeural',wrap:true,wpm:150,touchedInner:false};
+  var DEFAULTS = {engine:'storyline',elModel:'tags',profile:'natural',vals:clone(C.PRESETS.natural),inner:true,skipLead:true,lineBreaks:true,oneLine:false,gap:'line',addPunct:true,splitLong:true,useDash:true,ai:false,pr:clone(C.RULES.natural),dashStyle:'em',markerStyle:'tag',sentPause:'em',tagsV:true,voice:'en-US-JennyNeural',wrap:true,wpm:150,touchedInner:false};
   var state = clone(DEFAULTS), text = SAMPLE, raw = '';
 
   try{
@@ -892,13 +916,15 @@ details.adv summary{color:var(--fg);font-weight:600}
       if(sp && typeof sp==='object'){ Object.keys(base).forEach(function(k){ var v=sp[k]; if(typeof v===typeof base[k] && (typeof v!=='number' || isFinite(v))) base[k] = typeof v==='number' ? Math.min(99,Math.max(pmin(k),Math.round(v))) : v; }); }
       state.pr = base;
     }
+    if(saved && saved.state && !saved.state.tagsV) state.markerStyle='tag';
     if(saved && typeof saved.text==='string' && saved.text.trim()) text = saved.text;
   }catch(e){}
   if(['azure','eleven','storyline'].indexOf(state.engine)<0) state.engine='azure';
   if(['tags','plain'].indexOf(state.elModel)<0) state.elModel='tags';
   if(['space','line','blank'].indexOf(state.gap)<0) state.gap='line';
   if(['em','hyphen','ellipsis'].indexOf(state.dashStyle)<0) state.dashStyle='em';
-  if(['auto','dash','ellipsis'].indexOf(state.markerStyle)<0) state.markerStyle='auto';
+  if(['auto','dash','ellipsis','tag'].indexOf(state.markerStyle)<0) state.markerStyle='tag';
+  if(['off','short','em','pause'].indexOf(state.sentPause)<0) state.sentPause='em';
   if(PROFILES.indexOf(state.profile)<0) state.profile='natural';
 
   var saveTimer=null;
@@ -932,7 +958,7 @@ details.adv summary{color:var(--fg);font-weight:600}
     $('#cAdd').hidden = $('#cSplit').hidden = $('#cDash').hidden = m!=='plain';
     $('#optAdd').checked = state.addPunct; $('#optSplit').checked = state.splitLong; $('#optDash').checked = state.useDash;
     $('#fAI').hidden = m!=='plain'; $('#optAI').checked = state.ai;
-    $('#fGap').hidden = m!=='plain'; $('#fDash').hidden = m!=='plain'; $('#punct').hidden = m!=='plain'; $('#ruleList').hidden = m!=='plain'; $('#advRules').hidden = m!=='plain';
+    $('#fGap').hidden = m!=='plain'; $('#fSent').hidden = m!=='plain'; $('#sentPause').value = state.sentPause; $('#fDash').hidden = m!=='plain'; $('#punct').hidden = m!=='plain'; $('#ruleList').hidden = m!=='plain'; $('#advRules').hidden = m!=='plain';
     $('#dashStyle').value = state.dashStyle; $('#markerStyle').value = state.markerStyle;
     RULE_KEYS.forEach(function(r){ var e=$('#r-'+r[0]); e.checked=!!state.pr[r[0]]; e.disabled=!state.addPunct; });
     NUMS.forEach(function(n){ var e=$('#n-'+n[0]); e.value=state.pr[n[0]]; e.disabled=!state.addPunct; });
@@ -972,7 +998,7 @@ details.adv summary{color:var(--fg);font-weight:600}
   function update(){
     var m = mode();
     var cfg = {mode:m,vals:state.vals,inner:state.inner,skipLead:state.skipLead,lineBreaks:state.lineBreaks,oneLine:state.oneLine,gap:state.gap,voice:state.voice,wrap:state.wrap,wpm:state.wpm,
-               level:(C.RULES[state.profile] ? state.profile : 'natural'),rules:state.pr,dashStyle:state.dashStyle,markerStyle:state.markerStyle,addPunct:state.addPunct,splitLong:state.splitLong,useDash:state.useDash};
+               level:(C.RULES[state.profile] ? state.profile : 'natural'),rules:state.pr,dashStyle:state.dashStyle,markerStyle:state.markerStyle,sentPause:state.sentPause,addPunct:state.addPunct,splitLong:state.splitLong,useDash:state.useDash};
     var aiInfo = null, srcText = text;
     if(window.VOAI && state.ai && m==='plain'){ aiInfo = window.VOAI.apply(text); srcText = aiInfo.text; }
     var r = C.convert(srcText,cfg);
@@ -991,7 +1017,7 @@ details.adv summary{color:var(--fg);font-weight:600}
     drawStrip(r,m);
     var s = r.stats, st;
     if(m==='plain'){
-      st = [['Words',s.words],['Sentences',s.sentences],['Commas added',s.added.comma],['Dashes added',s.added.dash],['Full stops added',s.added.stop],['Spaces fixed',s.added.space]];
+      st = [['Words',s.words],['Sentences',s.sentences],['Commas added',s.added.comma],['Dashes added',s.added.dash],['Full stops added',s.added.stop],['Spaces fixed',s.added.space],['Pause tags added',s.added.tag]];
     }else{
       st = [['Words',s.words],['Sentences',s.sentences],['Breaks added',s.breaks],['Pause time',(s.pauseMs/1000).toFixed(1)+' s'],['Estimated length','~'+mmss(s.durationSec)]];
     }
@@ -1045,6 +1071,7 @@ details.adv summary{color:var(--fg);font-weight:600}
     state.pr[k]=Math.min(99,Math.max(pmin(k),n)); setCustom(); update(); save();
   });
   $('#gap').addEventListener('change',function(){ state.gap=this.value; refresh(); });
+  $('#sentPause').addEventListener('change',function(){ state.sentPause=this.value; update(); save(); });
   $('#voice').addEventListener('input',function(){ state.voice=this.value; update(); save(); });
   $('#wrap').addEventListener('change',function(){ state.wrap=this.checked; update(); save(); });
   $('#wpm').addEventListener('input',function(){ var n=+this.value; if(n>=40&&n<=400){ state.wpm=n; $('#wpmRange').value=Math.min(220,Math.max(90,n)); update(); save(); } });
